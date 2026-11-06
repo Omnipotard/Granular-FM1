@@ -1,0 +1,158 @@
+# GRAINE in the host simulator: every feature once.
+#   ../build.sh --host && app/build/host/graine_host app/tests/features.txt OUTDIR
+wait 1800
+expect page 0
+expect preset 0
+# the knobs of NUAGE
+turn K2 6
+wait 50
+expect p.1 >131
+expect dirty 1
+# pages: SEL twice, FX four times
+tap SEL
+wait 30
+expect page 2
+tap SEL
+wait 30
+expect page 3
+tap FX
+wait 30
+expect page 10
+tap FX
+wait 30
+expect page 11
+tap HOME
+wait 30
+expect page 0
+# modulation by gesture: LFO held, K3 turned
+press LFO
+wait 300
+turn K3 8
+wait 60
+shot mod_assign.png
+expect mod.0.2 >9
+release LFO
+wait 30
+expect page 0
+# ENV held, OCT+ to the velocity, K1
+press ENV
+wait 100
+tap OCT+
+turn K1 5
+wait 30
+release ENV
+expect mod.3.0 >5
+expect mods 4
+# play a chord
+wav features.wav
+key 7 down 110
+key 11 down 90
+key 14 down 70
+wait 1200
+shot chord_mod.png
+expect voices 3
+key 7 up
+key 11 up
+key 14 up
+wait 800
+# TAPIS: latched, a slice, a pad
+tap SEQ
+wait 30
+expect tapis 1
+key w4 down 100
+key b0 down 100
+wait 600
+expect pads 1
+shot tapis.png
+key b0 up
+key w4 up
+key w10 down 100
+key b7 down
+wait 700
+shot tapis_stutter.png
+key b7 up
+key w10 up
+tap SEQ
+wait 30
+expect tapis 0
+# freeze: HOME held
+key 9 down 100
+press HOME
+wait 500
+expect freeze 1
+shot freeze.png
+release HOME
+wait 30
+expect freeze 0
+key 9 up
+# capture: REC, play, REC
+tap REC
+wait 30
+expect capturing 1
+key 5 down 100
+key 12 down 100
+wait 1500
+shot capturing.png
+key 5 up
+key 12 up
+wait 300
+tap REC
+wait 30
+expect capturing 0
+expect cap_len >30000
+expect p.8 8
+key 7 down 100
+wait 900
+shot capture_source.png
+key 7 up
+wait 400
+# keep it in U1: REC + SAVE, OCT+
+press REC
+tap SAVE
+release REC
+wait 30
+expect overlay 2
+shot keep.png
+tap OCT+
+wait 300
+expect overlay 0
+expect user_len0 >30000
+expect p.8 9
+# gesture: REC held, K1 turned over a second
+press REC
+turn K1 10 60
+turn K1 -14 60
+wait 200
+release REC
+wait 30
+expect lanes 1
+expect running 1
+wait 1500
+shot gesture.png
+# dice: GLO three times, K1
+tap GLO
+tap GLO
+tap GLO
+wait 30
+expect page 17
+turn K1 2
+wait 30
+shot dice.png
+turn K1 -1
+wait 30
+# save the patch in slot 3
+tap SAVE
+wait 30
+expect overlay 1
+turn PRESET 2
+tap OCT+
+wait 50
+expect preset 2
+expect dirty 0
+wavstop
+# all kept across a power cycle
+power
+wait 1800
+expect preset 2
+expect user_len0 >30000
+shot after_power.png

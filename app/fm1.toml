@@ -1,0 +1,21 @@
+# GRAINE's build settings (fm1-base's tools/build.py, through ../build.sh)
+name = "GRAINE"                # the build's files: graine.fwsc, graine-X.Y.fwsc
+id_prefix = "FM-1_47"          # package identity: dev FM-1_4700, releases FM-1_47XXYYZZ
+usb_manufacturer = "GRAINE"
+usb_product = "GRAINE FM-1"
+o2 = ["dsp/engine.c"]          # the sound, its own unit at -O2
+words = "words.tsv"
+ble = false                    # no radio: its RAM goes to the capture, the echo and the reverb
+emu = ["data", "midi"]         # the emulator keeps the data area (kept captures) across reloads; Web MIDI in
+# the site (tools/make_site.py, tools/publish_site.sh)
+tagline = "un synthe granulaire pour le FM-1"
+repo = "https://github.com/Omnipotard/Granular-FM1"
+licence = "MIT"
+credits = "Built on fm1-base (MPL-2.0) and felucca-bsp, from Felucca by Leo Kuroshita (Hugelton Instruments). Every built-in sound is synthesized by tools/gen_sounds.py."
+# firmware.json, for firmware hubs (fm1-base docs/FIRMWARE-JSON.md)
+author = "GRAINE contributors"
+description = "GRAINE turns the M-VAVE FM-1 into a granular sampler: eight synthesized sources and your own captures, read by up to 64 grains in six voices. Four coloured knobs on every page, modulation by gesture (hold LFO or ENV, turn a knob), the TAPIS keyboard of positions and performance pads, recorded knob gestures, capture and resampling of the output, a filter, an echo, a reverb and a dice."
+tags = ["synth", "sampler", "ambient", "experimental"]
+install = ""
+site = ""
+screenshot = "docs/img/screen-cloud.png"

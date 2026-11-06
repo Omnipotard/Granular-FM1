@@ -1,0 +1,5 @@
+app/build/
+__pycache__/
+*.pyc
+/firmware.json
+app/web/words/

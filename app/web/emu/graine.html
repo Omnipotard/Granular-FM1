@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRAINE pour FM-1</title>
+<meta name="description" content="GRAINE, synthé granulaire pour le M-VAVE FM-1, dans le navigateur : le même code que le firmware.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,600&display=swap" rel="stylesheet">
+<style>
+/* layout: the FM-1 as the stage (its screen in the middle, lit like the firmware), the guide beneath it.
+   One visual world: a night studio, the four knob colours of the firmware as the only accents. */
+:root {
+  --ink: #0b0912;
+  --body: #18161f;
+  --well: #110f17;
+  --line: #2d2939;
+  --text: #f0eaf8;
+  --muted: #a198b4;
+  --amber: #ffba48;
+  --rose: #ff6284;
+  --aqua: #46e2ce;
+  --lilac: #ac8eff;
+  --rec: #ff4650;
+  --go: #78f096;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --ui: "Barlow Semi Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--ui); }
+body {
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #241c3a 0%, transparent 60%),
+    radial-gradient(800px 500px at 90% 110%, #1d1424 0%, transparent 60%),
+    var(--ink);
+  min-height: 100%;
+}
+a { color: var(--aqua); }
+button, select { font-family: var(--ui); }
+:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; }
+
+.top { max-width: 1120px; margin: 0 auto; padding: 22px 16px 8px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: flex-end; justify-content: space-between; }
+.brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 44px; line-height: 1; margin: 0; letter-spacing: 0.5px; text-wrap: balance; }
+.brand h1 .seed { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 14px var(--amber); margin: 0 2px 6px 4px; vertical-align: middle; }
+.brand p { margin: 0; color: var(--muted); font-size: 17px; }
+.status { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; background: #15121d; }
+.pill.on { color: var(--go); border-color: #2f5a3a; }
+
+main { max-width: 1120px; margin: 0 auto; padding: 8px 16px 32px; display: grid; gap: 22px; }
+
+/* ------------------------------------------------------------------ the device */
+.device {
+  position: relative;
+  background: linear-gradient(180deg, #1f1c27 0%, var(--body) 40%, #141219 100%);
+  border: 1px solid #2a2634;
+  border-radius: 34px;
+  padding: 22px;
+  box-shadow: 0 30px 80px #0008, inset 0 1px 0 #ffffff12;
+  display: grid;
+  gap: 18px 22px;
+  grid-template-columns: minmax(180px, 230px) auto minmax(300px, 1fr);
+  grid-template-areas: "left screen right" "keys keys keys";
+  align-items: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.left { grid-area: left; display: grid; gap: 14px; }
+.encs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; }
+.right { grid-area: right; display: grid; gap: 16px; }
+.knobs4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.screenwrap { grid-area: screen; justify-self: center; position: relative; padding: 14px; border-radius: 22px; background: #07060b; border: 1px solid #262230; box-shadow: inset 0 0 0 1px #000, 0 0 60px #6a4cff18; }
+#lcd { display: block; width: var(--lcd, 336px); height: var(--lcd, 336px); border-radius: 6px; background: #000; }
+.glass { position: absolute; inset: 14px; border-radius: 6px; pointer-events: none; background: linear-gradient(155deg, #ffffff10 0%, transparent 32%); }
+
+.ctl { display: grid; justify-items: center; gap: 4px; }
+.ctl .name { font-size: 12px; font-weight: 700; letter-spacing: 0.8px; color: #d9d2e6; }
+.ctl .cap { font-size: 12px; color: var(--muted); line-height: 1.1; text-align: center; min-height: 13px; }
+.knob { --c: #5b5470; width: 54px; height: 54px; border-radius: 50%; position: relative; cursor: ns-resize; touch-action: none;
+  background: radial-gradient(circle at 50% 38%, #3a3546 0%, #201d28 62%, #17141d 100%);
+  box-shadow: 0 0 0 3px #0e0c13, 0 0 0 5px var(--c), 0 6px 14px #0009; }
+.knob.k { width: 50px; height: 50px; }
+.knob i { position: absolute; left: 50%; top: 6px; width: 3px; height: 15px; margin-left: -1.5px; border-radius: 2px; background: var(--text); transform-origin: 50% 19px; }
+.knob.k i { transform-origin: 50% 19px; height: 13px; }
+.knob.big { width: 46px; height: 46px; --c: #3b364a; }
+.knob.big i { transform-origin: 50% 17px; height: 12px; top: 6px; }
+.knob:focus-visible { outline-offset: 6px; }
+
+.btns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px 8px; padding: 12px; border-radius: 16px; background: var(--well); border: 1px solid #221f2b; }
+.oct { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border-radius: 14px; background: var(--well); border: 1px solid #221f2b; }
+.btn { appearance: none; border: 0; border-radius: 9px; height: 34px; width: 100%; cursor: pointer; touch-action: none;
+  background: linear-gradient(180deg, #3a3446, #2a2533); color: #e9e2f3; font-weight: 700; font-size: 13px; letter-spacing: 0.6px;
+  box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0b0a10; transition: background 60ms, box-shadow 60ms; }
+.btn.dim { background: linear-gradient(180deg, #47391f, #33291a); color: #f2dfb8; }
+.btn.lit { background: linear-gradient(180deg, #ffd27a, #f0a640); color: #2a1a05; box-shadow: 0 0 16px #ffb34888, inset 0 1px 0 #fff6; }
+.btn.green { background: linear-gradient(180deg, #a3ffb7, #4fd477); color: #08240f; box-shadow: 0 0 16px #6cf08f88; }
+.btn.held { transform: translateY(2px); box-shadow: inset 0 1px 0 #ffffff14, 0 1px 0 #0b0a10; }
+.btn.latched { outline: 2px dashed var(--aqua); outline-offset: 2px; }
+.bcell { display: grid; gap: 3px; justify-items: center; }
+.bcell .cap { font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.05; }
+
+.keys { grid-area: keys; display: grid; gap: 8px; padding: 14px; border-radius: 20px; background: #0f0d14; border: 1px solid #221f2b; }
+.krow { --gap: 6px; position: relative; display: grid; grid-template-columns: repeat(16, 1fr); gap: var(--gap); }
+.krow.black { height: 64px; }
+.key { position: relative; border-radius: 12px; cursor: pointer; touch-action: none; background: linear-gradient(180deg, #d9d4e0, #b9b2c4); box-shadow: inset 0 -4px 0 #0003; height: 92px; }
+.key.b { position: absolute; top: 0; height: 64px; background: linear-gradient(180deg, #c4bfcc, #a29bb0); }
+.key.dimk { box-shadow: inset 0 -4px 0 #0003, 0 0 0 2px #ffb34840; }
+.key.litk { background: linear-gradient(180deg, #ffe0a3, #ffb648); box-shadow: 0 0 18px #ffb34899; }
+.key.held { filter: brightness(0.85); }
+.key .pad { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 11px; font-weight: 700; color: #2b2236; opacity: 0; }
+.tapis .key .pad { opacity: 1; }
+.key .slice { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; font-weight: 700; color: #3b3150; opacity: 0; }
+.tapis .key .slice { opacity: 0.9; }
+
+#power { position: absolute; inset: 14px; border-radius: 6px; border: 0; cursor: pointer; display: grid; place-content: center; gap: 8px; text-align: center;
+  background: radial-gradient(circle at 50% 45%, #2a2140 0%, #08060d 70%); color: var(--text); font-family: var(--ui); }
+#power[hidden] { display: none; }
+#power strong { font-family: var(--display); font-style: italic; font-size: 34px; font-weight: 600; }
+#power span { color: var(--muted); font-size: 15px; max-width: 220px; }
+#power .dot { width: 54px; height: 54px; margin: 0 auto; border-radius: 50%; border: 2px solid var(--amber); box-shadow: 0 0 24px #ffba4866, inset 0 0 18px #ffba4844; position: relative; }
+#power .dot::after { content: ""; position: absolute; left: 50%; top: 9px; width: 3px; height: 16px; margin-left: -1.5px; background: var(--amber); border-radius: 2px; }
+
+/* ------------------------------------------------------------------ the guide */
+.cards { display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; }
+.card { background: #14111b; border: 1px solid #262230; border-radius: 18px; padding: 18px 20px; }
+.card h2 { margin: 0 0 10px; font-size: 22px; font-weight: 700; letter-spacing: 0.3px; text-wrap: balance; }
+.card p { margin: 6px 0; color: #d6cfe2; line-height: 1.45; max-width: 68ch; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; line-height: 1.4; color: #ddd6e8; }
+.steps b { color: var(--text); }
+.steps .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #160f22; }
+kbd { font-family: var(--ui); font-weight: 700; font-size: 13px; padding: 1px 6px; border-radius: 5px; background: #2a2533; border: 1px solid #3a3446; color: var(--text); white-space: nowrap; }
+.c1 { color: var(--amber); } .c2 { color: var(--rose); } .c3 { color: var(--aqua); } .c4 { color: var(--lilac); }
+.side { display: grid; gap: 18px; align-content: start; }
+.drop { border: 1.5px dashed #4a4360; border-radius: 14px; padding: 16px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.drop.over { border-color: var(--aqua); color: var(--text); background: #46e2ce10; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.small { font-size: 14px; color: var(--muted); }
+.act { appearance: none; border: 1px solid #3c3650; background: #221e2c; color: var(--text); border-radius: 10px; padding: 7px 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.act:hover { border-color: var(--aqua); }
+.act:disabled { opacity: 0.45; cursor: default; }
+select { background: #221e2c; color: var(--text); border: 1px solid #3c3650; border-radius: 8px; padding: 5px 8px; font-size: 15px; }
+.msg { min-height: 20px; color: var(--aqua); font-size: 14px; }
+.msg.err { color: var(--rec); }
+.shortcuts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 15px; color: #d6cfe2; }
+footer { max-width: 1120px; margin: 0 auto; padding: 0 16px 30px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .device { grid-template-columns: 1fr; grid-template-areas: "screen" "right" "left" "keys"; padding: 14px; border-radius: 24px; gap: 14px; }
+  .left { grid-template-columns: 1fr; }
+  .encs { grid-template-columns: repeat(4, 1fr); }
+  .cards { grid-template-columns: 1fr; }
+  .brand h1 { font-size: 36px; }
+}
+@media (max-width: 520px) {
+  .btns { gap: 8px 5px; padding: 8px; }
+  .btn { height: 32px; font-size: 12px; letter-spacing: 0.2px; }
+  .bcell .cap { font-size: 10.5px; }
+  .krow { --gap: 3px; }
+  .key { height: 80px; border-radius: 8px; }
+  .key.b, .krow.black { height: 54px; }
+  .keys { padding: 8px; }
+  .key .pad { font-size: 9px; }
+  .key .slice { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Graine<span class="seed" aria-hidden="true"></span></h1>
+    <p>synthé granulaire pour le M-VAVE FM-1 · l'émulateur fait tourner le code exact du firmware</p>
+  </div>
+  <div class="status" aria-live="polite">
+    <span class="pill" id="state">Éteint</span>
+    <span class="pill" id="cpu">CPU —</span>
+    <span class="pill" id="rate">44,1 kHz</span>
+  </div>
+</header>
+
+<main>
+  <section class="device" id="device" aria-label="Le FM-1 avec GRAINE">
+    <div class="left">
+      <div class="encs">
+        <div class="ctl"><div class="knob big" tabindex="0" data-enc="master" aria-label="MASTER, volume"><i></i></div><span class="name">MASTER</span><span class="cap">volume</span></div>
+        <div class="ctl"><div class="knob big" tabindex="0" data-enc="0" aria-label="SELECT, la source"><i></i></div><span class="name">SELECT</span><span class="cap">source</span></div>
+        <div class="ctl"><div class="knob big" tabindex="0" data-enc="2" aria-label="PRESETS, les sons"><i></i></div><span class="name">PRESETS</span><span class="cap">sons</span></div>
+        <div class="ctl"><div class="knob big" tabindex="0" data-enc="1" aria-label="ALGORITHM, vitesse de lecture"><i></i></div><span class="name">ALGORITHM</span><span class="cap">vitesse</span></div>
+      </div>
+      <div class="oct">
+        <div class="bcell"><button class="btn" data-btn="12">OCT−</button><span class="cap">octave · non</span></div>
+        <div class="bcell"><button class="btn" data-btn="13">OCT+</button><span class="cap">octave · oui</span></div>
+      </div>
+    </div>
+
+    <div class="screenwrap">
+      <canvas id="lcd" width="480" height="480" aria-label="L'écran du FM-1"></canvas>
+      <div class="glass" aria-hidden="true"></div>
+      <button id="power" type="button"><div class="dot" aria-hidden="true"></div><strong>Allumer</strong><span>Le son démarre à ce clic. Monte le volume de ton appareil.</span></button>
+    </div>
+
+    <div class="right">
+      <div class="knobs4">
+        <div class="ctl"><div class="knob k" style="--c: var(--amber)" tabindex="0" data-enc="3" aria-label="KNOB 1"><i></i></div><span class="name c1">KNOB 1</span></div>
+        <div class="ctl"><div class="knob k" style="--c: var(--rose)" tabindex="0" data-enc="4" aria-label="KNOB 2"><i></i></div><span class="name c2">KNOB 2</span></div>
+        <div class="ctl"><div class="knob k" style="--c: var(--aqua)" tabindex="0" data-enc="5" aria-label="KNOB 3"><i></i></div><span class="name c3">KNOB 3</span></div>
+        <div class="ctl"><div class="knob k" style="--c: var(--lilac)" tabindex="0" data-enc="6" aria-label="KNOB 4"><i></i></div><span class="name c4">KNOB 4</span></div>
+      </div>
+      <div class="btns">
+        <div class="bcell"><button class="btn" data-btn="0">FX</button><span class="cap">effets</span></div>
+        <div class="bcell"><button class="btn" data-btn="1">SEL</button><span class="cap">source</span></div>
+        <div class="bcell"><button class="btn" data-btn="2">ENV</button><span class="cap">env · mod</span></div>
+        <div class="bcell"><button class="btn" data-btn="3">LFO</button><span class="cap">lfo · mod</span></div>
+        <div class="bcell"><button class="btn" data-btn="4">EDIT</button><span class="cap">grain</span></div>
+        <div class="bcell"><button class="btn" data-btn="5">GLO</button><span class="cap">global</span></div>
+        <div class="bcell"><button class="btn" data-btn="6">HOME</button><span class="cap">nuage · gel</span></div>
+        <div class="bcell"><button class="btn" data-btn="7">SAVE</button><span class="cap">sauver</span></div>
+        <div class="bcell"><button class="btn" data-btn="8">ARP</button><span class="cap">arpège</span></div>
+        <div class="bcell"><button class="btn" data-btn="9">SEQ</button><span class="cap">tapis</span></div>
+        <div class="bcell"><button class="btn" data-btn="10">PLAY</button><span class="cap">horloge</span></div>
+        <div class="bcell"><button class="btn" data-btn="11">REC</button><span class="cap">capture · geste</span></div>
+      </div>
+    </div>
+
+    <div class="keys" id="keys" aria-label="Le clavier : 27 touches, de fa à sol"></div>
+  </section>
+
+  <section class="cards">
+    <article class="card">
+      <h2>Prise en main</h2>
+      <ol class="steps">
+        <li><span class="n" style="background: var(--amber)">1</span><span><b>Joue.</b> Les touches jouent le nuage. <kbd>SELECT</kbd> change la source, <kbd>PRESETS</kbd> parcourt les 16 sons, <kbd>OCT−/+</kbd> l'octave.</span></li>
+        <li><span class="n" style="background: var(--rose)">2</span><span><b>Sculpte.</b> Les quatre knobs gardent leur couleur sur chaque page : <span class="c1">position</span>, <span class="c2">taille</span>, <span class="c3">densité</span>, <span class="c4">flou</span>. Retape <kbd>HOME</kbd> pour la page JEU (hauteur, essaim, envers, stéréo).</span></li>
+        <li><span class="n" style="background: var(--aqua)">3</span><span><b>Anime.</b> Maintiens <kbd>LFO</kbd> ou <kbd>ENV</kbd> et tourne un knob : il est modulé. <kbd>OCT−/+</kbd> pendant le maintien change de source (LFO 2, vélocité, pression, aléa, molette).</span></li>
+        <li><span class="n" style="background: var(--lilac)">4</span><span><b>Joue en live.</b> <kbd>SEQ</kbd> ouvre le TAPIS : les 16 touches blanches sont 16 endroits du son, les 11 noires des pads (gel, envers, octaves, bégaie, écho…). <kbd>ALGORITHM</kbd> règle la vitesse de lecture : 0 fige, ×1 lit en temps réel. Maintiens <kbd>HOME</kbd> pour geler.</span></li>
+        <li><span class="n" style="background: var(--rec)">5</span><span><b>Récolte.</b> <kbd>REC</kbd> enregistre ce que tu joues : ça devient une source à granuler. <kbd>REC</kbd>+<kbd>SAVE</kbd> la garde dans U1–U4.</span></li>
+        <li><span class="n" style="background: var(--go)">6</span><span><b>Gestes.</b> Maintiens <kbd>REC</kbd> et tourne un knob : ton geste tourne en boucle sur l'horloge. <kbd>REC</kbd>+<kbd>OCT−</kbd> efface. Sur GLO, la page HASARD lance les dés (et revient en arrière).</span></li>
+      </ol>
+      <p class="small">À la souris, un clic droit (ou Maj+clic) sur un bouton le garde enfoncé : c'est ainsi qu'on maintient LFO en tournant un knob. Sur téléphone, deux doigts suffisent.</p>
+    </article>
+    <div class="side">
+      <article class="card">
+        <h2>Ton propre son</h2>
+        <div class="drop" id="drop">
+          <span>Dépose un fichier audio ici, ou choisis-le. GRAINE en garde 2,97 s, en mono, à 22 kHz, comme sur le FM-1.</span>
+          <div class="row">
+            <label for="slot" class="small">Emplacement</label>
+            <select id="slot"><option value="0">U1</option><option value="1">U2</option><option value="2">U3</option><option value="3">U4</option></select>
+            <input type="file" id="file" accept="audio/*,.wav,.aif,.aiff,.mp3,.ogg,.flac" hidden>
+            <button class="act" id="pick" type="button" disabled>Choisir un fichier</button>
+          </div>
+          <div class="msg" id="impmsg" aria-live="polite">Allume d'abord le FM-1.</div>
+        </div>
+      </article>
+      <article class="card">
+        <h2>Clavier et MIDI</h2>
+        <div class="shortcuts">
+          <kbd>Q…I · A…K</kbd><span>les 16 touches blanches</span>
+          <kbd>1…0 · −</kbd><span>les 11 touches noires</span>
+          <kbd>↑ ↓</kbd><span>SELECT · <kbd>← →</kbd> ALGORITHM · <kbd>PgUp/PgDn</kbd> PRESETS</span>
+          <kbd>Échap</kbd><span>HOME · <kbd>P</kbd> PLAY · <kbd>O</kbd> REC · <kbd>Z X</kbd> OCT−/+</span>
+          <kbd>C V B</kbd><span>ENV · LFO · SEQ · <kbd>L</kbd> SAVE · <kbd>M</kbd> EDIT · <kbd>N</kbd> SEL</span>
+        </div>
+        <div class="row" style="justify-content: flex-start; margin-top: 12px">
+          <button class="act" id="midi" type="button">Brancher un clavier MIDI</button>
+          <select id="midiin" hidden aria-label="Entrée MIDI"></select>
+          <button class="act" id="reset" type="button">Tout effacer</button>
+        </div>
+        <div class="msg" id="midimsg" aria-live="polite"></div>
+      </article>
+    </div>
+  </section>
+</main>
+<footer>
+  GRAINE est libre (MIT). Il repose sur fm1-base (MPL-2.0) et felucca-bsp, issus de Felucca de Leo Kuroshita. Les huit sources intégrées sont synthétisées par script, sans échantillon enregistré. Les sons et captures que tu gardes ici restent dans ce navigateur.
+</footer>
+
+<!--@@INLINE@@-->
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const STORE_KEY = "graine-emu-store", DB = "graine-emu", DB_STORE = "state", DATA_KEY = "graine:data";
+const WHITE = [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26], BLACK = [1, 3, 5, 8, 10, 13, 15, 17, 20, 22, 25];
+const BLACK_AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];
+const PADS = ["gel", "envers", "−8ve", "+8ve", "quinte", "nuée", "pouss.", "bégaie", "dérive", "sombre", "écho"];
+const B = { FX: 0, SEL: 1, ENV: 2, LFO: 3, EDIT: 4, GLO: 5, HOME: 6, SAVE: 7, ARP: 8, SEQ: 9, PLAY: 10, REC: 11, OCTDN: 12, OCTUP: 13 };
+
+let node = null, ac = null, master = 2800, btnMask = 0, keyMask = 0, latched = 0, keyLatched = 0;
+const btnHeld = new Map(), keyHeld = new Map();
+const send = (m, t) => { if (node) node.port.postMessage(m, t || []); };
+
+/* ------------------------------------------------------------ the keyboard */
+const keyEls = [];
+(function buildKeys() {
+  const box = $("keys"), black = document.createElement("div"), white = document.createElement("div");
+  black.className = "krow black";
+  white.className = "krow";
+  WHITE.forEach((k, i) => {
+    const e = document.createElement("div");
+    e.className = "key";
+    e.setAttribute("role", "button");
+    e.setAttribute("aria-label", "touche blanche " + (i + 1));
+    e.innerHTML = `<span class="slice">${i + 1}</span>`;
+    e.style.gridColumn = String(i + 1);
+    white.appendChild(e);
+    keyEls[k] = e;
+  });
+  BLACK.forEach((k, i) => {
+    const e = document.createElement("div");
+    e.className = "key b";
+    e.setAttribute("role", "button");
+    e.setAttribute("aria-label", "touche noire " + (i + 1) + ", pad " + PADS[i]);
+    e.innerHTML = `<span class="pad">${PADS[i]}</span>`;
+    const at = BLACK_AFTER[i] + 1;           // centred on the gap after that white key
+    e.style.left = `calc(${at} * (100% + var(--gap)) / 16 - var(--gap) / 2 - (100% - 15 * var(--gap)) / 16 * 0.44)`;
+    e.style.width = `calc((100% - 15 * var(--gap)) / 16 * 0.88)`;
+    black.appendChild(e);
+    keyEls[k] = e;
+  });
+  box.append(black, white);
+})();
+
+function syncButtons() {
+  let m = latched;
+  for (const b of btnHeld.values()) m |= 1 << b;
+  if (m !== btnMask) { btnMask = m; send({ type: "buttons", mask: m }); }
+  document.querySelectorAll("[data-btn]").forEach((e) => {
+    const bit = 1 << +e.dataset.btn;
+    e.classList.toggle("held", !!(m & bit));
+    e.classList.toggle("latched", !!(latched & bit));
+    e.setAttribute("aria-pressed", m & bit ? "true" : "false");
+  });
+}
+function syncKeys() {
+  let m = keyLatched;
+  for (const k of keyHeld.values()) m |= 1 << k;
+  if (m !== keyMask) { keyMask = m; send({ type: "keys", mask: m }); }
+  keyEls.forEach((e, i) => e && e.classList.toggle("held", !!(m & (1 << i))));
+}
+
+document.querySelectorAll("[data-btn]").forEach((e) => {
+  const bit = +e.dataset.btn;
+  e.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  e.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    if (ev.shiftKey || ev.button === 2) { latched ^= 1 << bit; syncButtons(); return; }
+    if (latched & (1 << bit)) { latched &= ~(1 << bit); syncButtons(); return; }
+    e.setPointerCapture(ev.pointerId);
+    btnHeld.set("p" + ev.pointerId, bit);
+    syncButtons();
+  });
+  e.addEventListener("keydown", (ev) => { if (ev.key === " " || ev.key === "Enter") { ev.preventDefault(); holdDown("e" + bit, "btn", bit); } });
+  e.addEventListener("keyup", (ev) => { if (ev.key === " " || ev.key === "Enter") letGo("e" + bit); });
+});
+keyEls.forEach((e, i) => {
+  if (!e) return;
+  e.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  e.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    if (ev.shiftKey || ev.button === 2) { keyLatched ^= 1 << i; syncKeys(); return; }
+    if (keyLatched & (1 << i)) { keyLatched &= ~(1 << i); syncKeys(); return; }
+    e.setPointerCapture(ev.pointerId);
+    keyHeld.set("p" + ev.pointerId, i);
+    syncKeys();
+  });
+});
+function pointerUp(ev) {
+  const id = "p" + ev.pointerId;
+  if (btnHeld.delete(id)) syncButtons();
+  if (keyHeld.delete(id)) syncKeys();
+}
+for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) $("device").addEventListener(t, pointerUp);
+
+/* ------------------------------------------------------------ the knobs (endless encoders, and MASTER) */
+const angle = new Map();
+function turn(el, n) {
+  if (!n) return;
+  const enc = el.dataset.enc;
+  let a = angle.get(el) || 0;
+  if (enc === "master") {
+    master = Math.max(0, Math.min(4096, master + n * 128));
+    a = -135 + 270 * master / 4096;
+    send({ type: "master", value: master });
+  } else {
+    a = (a + n * 18) % 360;
+    send({ type: "enc", role: +enc, n });
+  }
+  angle.set(el, a);
+  el.querySelector("i").style.transform = `rotate(${a}deg)`;
+}
+document.querySelectorAll(".knob").forEach((el) => {
+  if (el.dataset.enc === "master") { angle.set(el, -135 + 270 * master / 4096); el.querySelector("i").style.transform = `rotate(${angle.get(el)}deg)`; }
+  let drag = null;
+  el.addEventListener("pointerdown", (ev) => { ev.preventDefault(); el.setPointerCapture(ev.pointerId); drag = { y: ev.clientY, x: ev.clientX, acc: 0, step: ev.pointerType === "touch" ? 9 : 6 }; el.focus({ preventScroll: true }); });
+  el.addEventListener("pointermove", (ev) => {
+    if (!drag) return;
+    drag.acc += (drag.y - ev.clientY) + (ev.clientX - drag.x) * 0.5;
+    drag.y = ev.clientY; drag.x = ev.clientX;
+    const n = Math.trunc(drag.acc / drag.step);
+    if (n) { drag.acc -= n * drag.step; turn(el, n); }
+  });
+  const end = () => { drag = null; };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  el.addEventListener("wheel", (ev) => { ev.preventDefault(); turn(el, ev.deltaY < 0 ? 1 : -1); }, { passive: false });
+  el.addEventListener("keydown", (ev) => {
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 }[ev.key];
+    if (d) { ev.preventDefault(); ev.stopPropagation(); turn(el, d); }
+  });
+});
+
+/* ------------------------------------------------------------ the computer's keyboard */
+const KEYMAP = {};
+"qwertyui".split("").forEach((c, i) => KEYMAP["Key" + c.toUpperCase()] = { key: WHITE[i] });
+"asdfghjk".split("").forEach((c, i) => KEYMAP["Key" + c.toUpperCase()] = { key: WHITE[8 + i] });
+"1234567890".split("").forEach((c, i) => KEYMAP["Digit" + c] = { key: BLACK[i] });
+KEYMAP.Minus = { key: BLACK[10] };
+Object.assign(KEYMAP, { KeyP: { btn: B.PLAY }, KeyO: { btn: B.REC }, Escape: { btn: B.HOME }, KeyZ: { btn: B.OCTDN }, KeyX: { btn: B.OCTUP },
+  KeyC: { btn: B.ENV }, KeyV: { btn: B.LFO }, KeyB: { btn: B.SEQ }, KeyL: { btn: B.SAVE }, KeyM: { btn: B.EDIT }, KeyN: { btn: B.SEL },
+  Comma: { btn: B.FX }, Period: { btn: B.GLO }, Slash: { btn: B.ARP } });
+const ENC_KEYS = { ArrowUp: ["0", 1], ArrowDown: ["0", -1], ArrowRight: ["1", 1], ArrowLeft: ["1", -1], PageUp: ["2", 1], PageDown: ["2", -1] };
+function holdDown(id, kind, v) {
+  if (kind === "key") { keyHeld.set(id, v); syncKeys(); } else { btnHeld.set(id, v); syncButtons(); }
+}
+function letGo(id) {
+  if (keyHeld.delete(id)) syncKeys();
+  if (btnHeld.delete(id)) syncButtons();
+}
+addEventListener("keydown", (ev) => {
+  if (!node || ev.repeat || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const t = ev.target;
+  if (t && (t.tagName === "SELECT" || t.tagName === "INPUT")) return;
+  if (ENC_KEYS[ev.code] && !(t && t.classList && t.classList.contains("knob"))) {
+    const [enc, n] = ENC_KEYS[ev.code];
+    turn(document.querySelector(`.knob[data-enc="${enc}"]`), n);
+    ev.preventDefault();
+    return;
+  }
+  const m = KEYMAP[ev.code];
+  if (!m) return;
+  ev.preventDefault();
+  if (m.key !== undefined) holdDown("k" + ev.code, "key", m.key); else holdDown("k" + ev.code, "btn", m.btn);
+});
+addEventListener("keyup", (ev) => letGo("k" + ev.code));
+addEventListener("blur", () => { btnHeld.clear(); keyHeld.clear(); syncButtons(); syncKeys(); });
+
+/* ------------------------------------------------------------ the screen and the lights */
+const lcd = $("lcd"), lctx = lcd.getContext("2d");
+const off = document.createElement("canvas");
+off.width = off.height = 240;
+const octx = off.getContext("2d"), img = octx.createImageData(240, 240);
+function drawScreen(fb) {
+  const d = img.data;
+  for (let i = 0; i < 57600; i++) {
+    const v = fb[i], p = ((v >> 8) | (v << 8)) & 0xffff;
+    d[i * 4] = ((p >> 11) & 31) * 255 / 31;
+    d[i * 4 + 1] = ((p >> 5) & 63) * 255 / 63;
+    d[i * 4 + 2] = (p & 31) * 255 / 31;
+    d[i * 4 + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  lctx.imageSmoothingEnabled = false;
+  lctx.drawImage(off, 0, 0, 480, 480);
+}
+function drawLights(b, k, db, dk) {
+  document.querySelectorAll("[data-btn]").forEach((e) => {
+    const bit = 1 << +e.dataset.btn;
+    const green = +e.dataset.btn === B.PLAY && (b & (1 << 14));
+    e.classList.toggle("lit", !!(b & bit) && !green);
+    e.classList.toggle("green", !!green);
+    e.classList.toggle("dim", !(b & bit) && !!(db & bit));
+  });
+  keyEls.forEach((e, i) => {
+    if (!e) return;
+    e.classList.toggle("litk", !!(k & (1 << i)));
+    e.classList.toggle("dimk", !(k & (1 << i)) && !!(dk & (1 << i)));
+  });
+  $("keys").classList.toggle("tapis", !!(b & (1 << B.SEQ)));
+}
+
+/* ------------------------------------------------------------ what this browser keeps */
+function idb(mode, fn) {
+  return new Promise((resolve, reject) => {
+    let r;
+    try { r = indexedDB.open(DB, 1); } catch (e) { reject(e); return; }
+    r.onupgradeneeded = () => r.result.createObjectStore(DB_STORE);
+    r.onerror = () => reject(r.error);
+    r.onsuccess = () => {
+      const d = r.result, t = d.transaction(DB_STORE, mode), q = fn(t.objectStore(DB_STORE));
+      t.oncomplete = () => { d.close(); resolve(q && q.result); };
+      t.onerror = t.onabort = () => { d.close(); reject(t.error); };
+    };
+  });
+}
+const dataSaved = () => idb("readonly", (s) => s.get(DATA_KEY)).catch(() => undefined);
+const dataKeep = (buf) => idb("readwrite", (s) => s.put(buf, DATA_KEY)).catch(() => {});
+function loadStore() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"), out = {};
+    for (const [o, b64] of Object.entries(raw)) out[o] = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
+    return out;
+  } catch { return {}; }
+}
+function saveStore(store) {
+  try {
+    const raw = {};
+    for (const [o, u8] of Object.entries(store)) { let s = ""; for (const c of u8) s += String.fromCharCode(c); raw[o] = btoa(s); }
+    localStorage.setItem(STORE_KEY, JSON.stringify(raw));
+  } catch { /* this session only */ }
+}
+
+/* ------------------------------------------------------------ switching on */
+function b64buf(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; }
+async function wasmBytes() {
+  if (window.GRAINE_WASM) return b64buf(window.GRAINE_WASM);
+  const r = await fetch("app.wasm");
+  if (!r.ok) throw new Error("app.wasm " + r.status);
+  return r.arrayBuffer();
+}
+async function addWorklet(ctx) {
+  if (window.GRAINE_WORKLET) {
+    const url = URL.createObjectURL(new Blob([window.GRAINE_WORKLET], { type: "text/javascript" }));
+    await ctx.audioWorklet.addModule(url);
+  } else {
+    await ctx.audioWorklet.addModule("worklet.js");
+  }
+}
+async function switchOn() {
+  const p = $("power");
+  p.disabled = true;
+  p.querySelector("strong").textContent = "Démarrage…";
+  try {
+    ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
+    const [wasm, kept] = await Promise.all([wasmBytes(), dataSaved(), addWorklet(ac)]);
+    node = new AudioWorkletNode(ac, "fm1", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+    node.connect(ac.destination);
+    const ready = new Promise((res) => {
+      node.port.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "ready") res();
+        else if (m.type === "frame") {
+          if (m.fb) drawScreen(m.fb);
+          drawLights(m.buttons, m.keys, m.dimButtons, m.dimKeys);
+          if (m.load !== undefined) $("cpu").textContent = `CPU ${m.load} %`;
+          if (m.store) saveStore(m.store);
+        } else if (m.type === "app") {
+          if (m.part === "data" && m.data) dataKeep(m.data);
+          if (m.part === "graine" && m.ok !== undefined) importDone(m.ok);
+        }
+      };
+    });
+    send({ type: "load", wasm, store: loadStore(), master, parts: { data: kept } }, [wasm]);
+    await ready;
+    await ac.resume();
+    p.hidden = true;
+    $("state").textContent = "Allumé";
+    $("state").classList.add("on");
+    $("rate").textContent = ac.sampleRate === 44100 ? "44,1 kHz" : `${(ac.sampleRate / 1000).toLocaleString("fr")} kHz → 44,1`;
+    $("pick").disabled = false;
+    $("impmsg").textContent = "";
+    syncButtons(); syncKeys();
+  } catch (err) {
+    node = null;
+    p.disabled = false;
+    p.querySelector("strong").textContent = "Allumer";
+    p.querySelector("span").textContent = "Démarrage impossible : " + (err && err.message || err) + ". Chrome, Edge, Firefox et Safari récents conviennent.";
+  }
+}
+$("power").addEventListener("click", switchOn);
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") send({ type: "app", part: "data", flush: 1 }); });
+$("reset").addEventListener("click", async () => {
+  const r = $("reset");
+  if (!r.dataset.armed) { r.dataset.armed = "1"; r.textContent = "Confirmer : sons, captures, réglages"; return; }
+  try { localStorage.removeItem(STORE_KEY); } catch {}
+  await idb("readwrite", (s) => s.delete(DATA_KEY)).catch(() => {});
+  location.reload();
+});
+
+/* ------------------------------------------------------------ a sound of your own, into U1..U4 */
+const CAP = 65472, RATE = 22050;
+function ulaw(x) {
+  const y = Math.sign(x) * Math.log1p(255 * Math.min(1, Math.abs(x))) / Math.log(256);
+  return Math.max(0, Math.min(255, Math.round((y + 1) * 127.5)));
+}
+async function importFile(f) {
+  const msg = $("impmsg");
+  if (!node) { msg.textContent = "Allume d'abord le FM-1."; return; }
+  msg.className = "msg";
+  msg.textContent = "Lecture de " + f.name + "…";
+  try {
+    const buf = await f.arrayBuffer();
+    const dec = await ac.decodeAudioData(buf);
+    const frames = Math.ceil(dec.duration * RATE);
+    const oc = new OfflineAudioContext(1, Math.max(1, frames), RATE);
+    const src = oc.createBufferSource();
+    src.buffer = dec;
+    src.connect(oc.destination);
+    src.start();
+    const out = (await oc.startRendering()).getChannelData(0);
+    let start = 0, peak = 0;
+    while (start < out.length && Math.abs(out[start]) < 0.003) start++;   // the silence before it starts
+    const len = Math.min(CAP, out.length - start);
+    if (len < 256) throw new Error("trop court ou silencieux");
+    for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(out[start + i]));
+    const g = peak > 0 ? 0.95 / peak : 1, body = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      const fade = i < 64 ? i / 64 : i > len - 256 ? (len - i) / 256 : 1;
+      body[i] = ulaw(out[start + i] * g * fade);
+    }
+    const head = new Uint8Array(32).fill(0), dv = new DataView(head.buffer);
+    dv.setUint32(0, 0x31535247, true);
+    dv.setUint32(4, len, true);
+    dv.setUint32(8, RATE, true);
+    const name = f.name.replace(/\.[^.]*$/, "").normalize("NFD").replace(/[^A-Za-z0-9 _-]/g, "").toUpperCase().slice(0, 9) || "SON";
+    for (let i = 0; i < name.length; i++) head[12 + i] = name.charCodeAt(i);
+    dv.setUint32(24, 0xffffffff, true);
+    dv.setUint32(28, 0xffffffff, true);
+    const slot = +$("slot").value;
+    send({ type: "app", part: "graine", slot, head: head.buffer, body: body.buffer }, [head.buffer, body.buffer]);
+    msg.textContent = `${name} → U${slot + 1} (${(len / RATE).toFixed(2).replace(".", ",")} s)…`;
+  } catch (e) {
+    msg.className = "msg err";
+    msg.textContent = "Impossible de lire ce fichier : " + (e && e.message || e);
+  }
+}
+function importDone(slot) {
+  $("impmsg").textContent = `Prêt : U${slot + 1} est la source jouée. Il reste dans ce navigateur.`;
+}
+$("pick").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", () => { const f = $("file").files[0]; if (f) importFile(f); $("file").value = ""; });
+const drop = $("drop");
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) importFile(f); });
+
+/* ------------------------------------------------------------ MIDI in */
+let midiAccess = null, midiIn = null;
+$("midi").addEventListener("click", async () => {
+  const msg = $("midimsg");
+  if (!navigator.requestMIDIAccess) { msg.textContent = "Ce navigateur n'a pas Web MIDI (Chrome et Edge l'ont)."; return; }
+  try { midiAccess = await navigator.requestMIDIAccess(); } catch (e) { msg.textContent = "MIDI refusé : " + (e && e.message || e); return; }
+  const sel = $("midiin");
+  const fill = () => {
+    sel.replaceChildren(new Option("aucune entrée", ""));
+    for (const p of midiAccess.inputs.values()) sel.append(new Option(p.name, p.id));
+    if (midiIn) sel.value = midiIn.id;
+  };
+  fill();
+  midiAccess.onstatechange = fill;
+  sel.hidden = false;
+  $("midi").hidden = true;
+  msg.textContent = midiAccess.inputs.size ? "Choisis ton clavier : notes, vélocité, molette, pression, horloge." : "Aucun appareil MIDI trouvé.";
+  sel.addEventListener("change", () => {
+    if (midiIn) midiIn.onmidimessage = null;
+    midiIn = midiAccess.inputs.get(sel.value) || null;
+    if (midiIn) midiIn.onmidimessage = (e) => send({ type: "app", part: "midi", data: Uint8Array.from(e.data) });
+  });
+});
+
+/* ------------------------------------------------------------ the screen's size follows the room */
+function fitScreen() {
+  const w = innerWidth;
+  const s = w > 900 ? Math.min(360, Math.max(300, w * 0.3)) : Math.min(w - 92, 420);
+  document.documentElement.style.setProperty("--lcd", Math.round(s) + "px");
+}
+addEventListener("resize", fitScreen);
+fitScreen();
+/* until it is on, the screen shows a still of GRAINE */
+(function idleScreen() {
+  const g = lctx.createRadialGradient(240, 220, 10, 240, 240, 340);
+  g.addColorStop(0, "#21182f"); g.addColorStop(1, "#050409");
+  lctx.fillStyle = g; lctx.fillRect(0, 0, 480, 480);
+})();
+</script>
+</body>
+</html>

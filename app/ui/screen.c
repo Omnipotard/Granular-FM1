@@ -529,6 +529,8 @@ static void draw_strip(uint32_t now)
         draw_knob(k, now);
 }
 
+#include "viz.c"                                 /* the page's picture, over the cloud */
+
 /* ------------------------------------------------------------------------------------------- a frame --- */
 static uint32_t last_draw;
 static uint32_t drawn_seq;
@@ -566,6 +568,8 @@ static void screen_frame(void)
     for (j = 0; j < G_MAXV; j++)
         if (GV.vlev[j])
             anim = 1;
+    if (viz_kind() != VZ_NONE && (ui.strip_dirty || viz_live() || (strip_animates() && GV.seq != drawn_seq)))
+        anim = 1;                                    /* the page's picture follows its knobs */
     if (now - last_draw < 33u)
         return;
     if (!anim && !ui.head_dirty && !ui.strip_dirty && !(strip_animates() && GV.seq != drawn_seq))
@@ -587,6 +591,7 @@ static void screen_frame(void)
             else
                 draw_overview();
             draw_grains();
+            draw_viz();
             draw_info();
             draw_empty();
             if (GV.cap_on)

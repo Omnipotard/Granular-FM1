@@ -1,0 +1,116 @@
+# GRAINE in the host simulator: the pages for drones and glitches (DRONE, CHAOS, HALO, HACHOIR, SCENES, PLUIE).
+#   ../build.sh --host && app/build/host/graine_host app/tests/drone_glitch.txt OUTDIR
+wait 1800
+wav drone_glitch.wav
+# DRONE: EDIT three times; stretched, detuned, half of source B
+tap EDIT
+tap EDIT
+tap EDIT
+wait 30
+expect page 7
+turn K1 25
+turn K2 25
+turn K4 30
+wait 30
+expect p.72 >10
+expect p.75 >10
+key 7 down 100
+key 14 down 90
+wait 2000
+expect voices 2
+expect grains >3
+shot drone.png
+# CHAOS: wild grains, the chopper on every kind, the clock running
+tap EDIT
+wait 30
+expect page 8
+turn K1 25
+turn K2 6
+turn K4 30
+tap PLAY
+wait 30
+expect p.77 5
+wait 2500
+shot chaos.png
+turn K2 -6
+wait 30
+expect chop 0
+# HALO: FX four times; shimmer, resonators, the space held
+tap FX
+tap FX
+tap FX
+tap FX
+wait 30
+expect page 16
+turn K1 30
+turn K3 30
+turn K4 20
+wait 2000
+expect p.80 >10
+expect p.82 >10
+shot halo.png
+turn K4 -30
+# HACHOIR: FX twice more; a gate with swing, ring and fold
+tap FX
+tap FX
+wait 30
+expect page 18
+turn K1 3
+turn K2 12
+turn K3 15
+turn K4 15
+wait 2000
+expect p.84 3
+shot chopper.png
+turn K1 -3
+turn K3 -20
+turn K4 -20
+# SCENES: HOME, then twice more; take B, mutate it, morph halfway
+tap HOME
+tap HOME
+tap HOME
+wait 30
+expect page 2
+expect sceneb 0
+turn K2 1
+wait 30
+expect sceneb 1
+turn K3 1
+wait 30
+turn K1 30
+wait 300
+expect morph >20
+shot scenes.png
+turn K1 -30
+wait 30
+expect morph 0
+key 7 up
+key 14 up
+wait 1500
+# PLUIE: ARP twice; notes fall by themselves
+tap ARP
+tap ARP
+wait 30
+expect page 20
+turn K1 75
+wait 3000
+expect rain >0
+shot rain.png
+turn K1 -90
+wait 30
+expect p.92 0
+# TENUE: a key stays after it is let go, then lets go on its next press
+turn K4 1
+wait 30
+expect p.95 1
+wait 4000
+key 9 down 100
+wait 100
+key 9 up
+wait 1500
+expect voices >0
+key 9 down 100
+wait 100
+key 9 up
+turn K4 -1
+wait 4000

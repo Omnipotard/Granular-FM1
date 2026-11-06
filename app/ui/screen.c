@@ -410,7 +410,7 @@ static void draw_overlay(void)
         d_text_c(SW / 2, y + 6, &FONT_XS, TR("SAUVER LE SON DANS", "SAVE THE PATCH TO"), KNOB_RGB[2]);
         s_int(ui.ov_sel + 1, b, 0);
         d_text_c(SW / 2, y + 22, &FONT_L, b, K_TEXT);
-        d_text_c(SW / 2, y + 58, &FONT_B, bank.p[ui.ov_sel].name, K_SOFT);
+        d_text_c(SW / 2, y + 58, &FONT_B, BANKP(ui.ov_sel).name, K_SOFT);
         d_text_c(SW / 2, y + 84, &FONT_XS, TR("OCT+ OUI     OCT- NON", "OCT+ YES     OCT- NO"), K_DIM);
     } else if (ui.ov == OV_KEEP) {
         const gsrc_t *s = &G_SRC[G_SRC_CAPT + 1 + ui.ov_sel];

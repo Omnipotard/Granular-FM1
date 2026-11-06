@@ -12,7 +12,7 @@ static const char *const E_QUANT[] = {"LIBRE", "FREE", "DEMI-T", "SEMI", "OCTAVE
 static const char *const E_TIMING[] = {"REGUL", "EVEN", "ALEA", "RANDOM", "SYNC", "SYNC"};
 static const char *const E_SHAPE[] = {"SINUS", "SINE", "TRIANG", "TRI", "RAMPE+", "RAMP UP", "RAMPE-", "RAMP DN",
                                       "CARRE", "SQUARE", "HASARD", "S&H", "DERIVE", "DRIFT"};
-static const char *const E_SYNC[] = {"LIBRE", "FREE", "TEMPO", "TEMPO"};
+static const char *const E_SYNC[] = {"LIBRE", "FREE", "TEMPO", "TEMPO", "LENT", "SLOW"};
 static const char *const E_LMODE[] = {"LIBRE", "FREE", "NOTE", "NOTE"};
 static const char *const E_DDIV[] = {"1/128", "1/128", "1/64", "1/64", "1/32", "1/32", "1/16T", "1/16T", "1/16",
                                      "1/16", "1/8T", "1/8T", "1/16.", "1/16.", "1/8", "1/8", "1/4T", "1/4T", "1/8.",
@@ -26,7 +26,15 @@ static const char *const E_SCALE[] = {"CHROM", "CHROM", "MAJEUR", "MAJOR", "MINE
                                       "PENTA-", "PENTA-", "BLUES", "BLUES"};
 static const char *const E_NOTE[] = {"C", "C", "C#", "C#", "D", "D", "D#", "D#", "E", "E", "F", "F", "F#", "F#",
                                      "G", "G", "G#", "G#", "A", "A", "A#", "A#", "B", "B"};
-static const char *const E_REC[] = {"1 FOIS", "ONCE", "BOUCLE", "LOOP"};
+static const char *const E_REC[] = {"1 FOIS", "ONCE", "BOUCLE", "LOOP", "SEUIL", "THRESH"};
+static const char *const E_CHOP[] = {"OFF", "OFF", "BEGAIE", "STUTTER", "ROLL", "ROLL", "FREIN", "TAPESTOP",
+                                     "ENVOL", "SPEEDUP", "MELANGE", "MIXED"};
+static const char *const E_CHDIV[] = {"1/4", "1/4", "1/8", "1/8", "1/16", "1/16", "1/32", "1/32"};
+static const char *const E_SHINT[] = {"OCTAVE", "OCTAVE", "QUINTE", "FIFTH", "OCT+5TE", "OCT+5TH", "OCT BAS",
+                                      "OCT DOWN"};
+static const char *const E_GATE[] = {"OFF", "OFF", "CROCHES", "8THS", "SYNCOPE", "SYNCO", "TRESILLO", "TRESILLO",
+                                     "GALOP", "GALLOP", "HACHE", "CHOPPED", "PULSE", "PULSE", "ALEA", "RANDOM"};
+static const char *const E_ONOFF[] = {"OFF", "OFF", "ON", "ON"};
 static const char *const E_GEST[] = {"1 MES", "1 BAR", "2 MES", "2 BARS", "4 MES", "4 BARS", "8 MES", "8 BARS"};
 static const char *const E_TARGET[] = {"NUAGE", "CLOUD", "GRAIN", "GRAIN", "SON", "SOUND", "TOUT", "ALL"};
 static const char *const E_LANG[] = {"FRANCAIS", "FRANCAIS", "ENGLISH", "ENGLISH"};
@@ -76,12 +84,12 @@ const pdef_t PDEF[NP] = {
     /* LFO 1 */
     [P_L1RATE] = {{"VITESSE", "RATE"}, {"LFO 1 VITESSE", "LFO 1 RATE"}, 0, 100, 42, U_RATE, 0, 0},
     [P_L1SHAPE] = {{"FORME", "SHAPE"}, {"LFO 1 FORME", "LFO 1 SHAPE"}, 0, 6, 0, U_ENUM, C_, E_SHAPE},
-    [P_L1SYNC] = {{"SYNC", "SYNC"}, {"LFO 1 SYNC", "LFO 1 SYNC"}, 0, 1, 0, U_ENUM, C_, E_SYNC},
+    [P_L1SYNC] = {{"SYNC", "SYNC"}, {"LFO 1 SYNC", "LFO 1 SYNC"}, 0, 2, 0, U_ENUM, C_, E_SYNC},
     [P_L1MODE] = {{"DEPART", "RETRIG"}, {"LFO 1 DEPART", "LFO 1 RETRIG"}, 0, 1, 0, U_ENUM, C_, E_LMODE},
     /* LFO 2 */
     [P_L2RATE] = {{"VITESSE", "RATE"}, {"LFO 2 VITESSE", "LFO 2 RATE"}, 0, 100, 22, U_RATE, 0, 0},
     [P_L2SHAPE] = {{"FORME", "SHAPE"}, {"LFO 2 FORME", "LFO 2 SHAPE"}, 0, 6, 6, U_ENUM, C_, E_SHAPE},
-    [P_L2SYNC] = {{"SYNC", "SYNC"}, {"LFO 2 SYNC", "LFO 2 SYNC"}, 0, 1, 0, U_ENUM, C_, E_SYNC},
+    [P_L2SYNC] = {{"SYNC", "SYNC"}, {"LFO 2 SYNC", "LFO 2 SYNC"}, 0, 2, 0, U_ENUM, C_, E_SYNC},
     [P_L2MODE] = {{"DEPART", "RETRIG"}, {"LFO 2 DEPART", "LFO 2 RETRIG"}, 0, 1, 0, U_ENUM, C_, E_LMODE},
     /* FILTRE */
     [P_FTYPE] = {{"TYPE", "TYPE"}, {"TYPE DE FILTRE", "FILTER TYPE"}, 0, 100, 0, U_PCT, 0, 0},
@@ -116,7 +124,7 @@ const pdef_t PDEF[NP] = {
     /* HORLOGE */
     [P_TEMPO] = {{"TEMPO", "TEMPO"}, {"TEMPO", "TEMPO"}, 40, 240, 110, U_BPM, PF_GLOBAL | PF_NOMOD, 0},
     [P_VELO] = {{"VELOC", "VELO"}, {"SENSIB. VELOCITE", "VELOCITY SENS"}, 0, 100, 60, U_PCT, PF_NOMOD, 0},
-    [P_RECMODE] = {{"CAPTURE", "CAPTURE"}, {"MODE DE CAPTURE", "CAPTURE MODE"}, 0, 1, 0, U_ENUM, PF_GLOBAL | C_, E_REC},
+    [P_RECMODE] = {{"CAPTURE", "CAPTURE"}, {"MODE DE CAPTURE", "CAPTURE MODE"}, 0, 2, 0, U_ENUM, PF_GLOBAL | C_, E_REC},
     [P_GESTLEN] = {{"GESTES", "GESTURE"}, {"BOUCLE DE GESTES", "GESTURE LOOP"}, 0, 3, 1, U_ENUM, PF_GLOBAL | C_, E_GEST},
     /* HASARD */
     [P_DICE] = {{"LANCER", "ROLL"}, {"LANCER LES DES", "ROLL THE DICE"}, 0, 999, 0, U_INT,
@@ -124,6 +132,38 @@ const pdef_t PDEF[NP] = {
     [P_DOSE] = {{"DOSE", "AMOUNT"}, {"DOSE DE HASARD", "CHANCE AMOUNT"}, 0, 100, 35, U_PCT, PF_GLOBAL | PF_NOMOD, 0},
     [P_TARGET] = {{"CIBLE", "TARGET"}, {"CIBLE DU HASARD", "CHANCE TARGET"}, 0, 3, 0, U_ENUM, PF_GLOBAL | C_, E_TARGET},
     [P_LANG] = {{"LANGUE", "LANGUAGE"}, {"LANGUE", "LANGUAGE"}, 0, 1, 0, U_ENUM, PF_GLOBAL | C_, E_LANG},
+    /* DRONE */
+    [P_STRETCH] = {{"ETIRE", "STRETCH"}, {"GRAINS ETIRES", "GRAIN STRETCH"}, 0, 100, 0, U_X, 0, 0},
+    [P_DETUNE] = {{"CHOEUR", "CHORUS"}, {"VOIX DESACCORDEES", "DETUNED VOICES"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_SRC2] = {{"SOURC B", "SRC B"}, {"SOURCE B", "SOURCE B"}, 0, G_NSRC - 1, 1, U_ENUM, PF_NOMOD, 0},
+    [P_XFADE] = {{"MELANGE", "BLEND"}, {"MELANGE A > B", "BLEND A > B"}, 0, 100, 0, U_PCT, 0, 0},
+    /* CHAOS */
+    [P_CHAOS] = {{"CHAOS", "CHAOS"}, {"GRAINS FOUS", "WILD GRAINS"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_CHOP] = {{"HACHE", "CHOP"}, {"HACHOIR AUTO", "AUTO CHOP"}, 0, 5, 0, U_ENUM, C_, E_CHOP},
+    [P_CHDIV] = {{"PAS", "STEP"}, {"PAS DU HACHOIR", "CHOP STEP"}, 0, 3, 2, U_DIV, C_, E_CHDIV},
+    [P_CHPROB] = {{"CHANCE", "CHANCE"}, {"CHANCE DU HACHOIR", "CHOP CHANCE"}, 0, 100, 35, U_PCT, 0, 0},
+    /* HALO */
+    [P_SHIM] = {{"SHIMMER", "SHIMMER"}, {"ESPACE QUI MONTE", "RISING SPACE"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_SHINT] = {{"INTERV", "INTERV"}, {"INTERVALLE SHIMMER", "SHIMMER INTERVAL"}, 0, 3, 0, U_ENUM, C_, E_SHINT},
+    [P_RESO] = {{"RESONAT", "RESONAT"}, {"RESONATEURS ACCORDES", "TUNED RESONATORS"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_INFINI] = {{"INFINI", "HOLD"}, {"ESPACE INFINI", "SPACE HOLD"}, 0, 100, 0, U_PCT, 0, 0},
+    /* HACHOIR */
+    [P_GATE] = {{"MASQUE", "GATE"}, {"MASQUE RYTHMIQUE", "RHYTHM GATE"}, 0, 7, 0, U_ENUM, C_, E_GATE},
+    [P_SWING] = {{"SWING", "SWING"}, {"SWING", "SWING"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_RING] = {{"ANNEAU", "RING"}, {"MODULATION EN ANNEAU", "RING MOD"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_FOLD] = {{"PLIAGE", "FOLD"}, {"REPLI DE L'ONDE", "WAVEFOLD"}, 0, 100, 0, U_PCT, 0, 0},
+    /* SCENES */
+    [P_MORPH] = {{"MORPH", "MORPH"}, {"SCENE A > B", "SCENE A > B"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_TAKEB] = {{"PRENDRE", "TAKE B"}, {"PRENDRE LA SCENE B", "TAKE SCENE B"}, 0, 999, 0, U_INT,
+                 PF_NOMOD | PF_ACTION, 0},
+    [P_MUTB] = {{"MUTER B", "MUTATE"}, {"MUTER LA SCENE B", "MUTATE SCENE B"}, 0, 999, 0, U_INT,
+                PF_NOMOD | PF_ACTION, 0},
+    [P_AUTOM] = {{"AUTO", "AUTO"}, {"MORPH AUTOMATIQUE", "AUTO MORPH"}, 0, 100, 0, U_PCT, 0, 0},
+    /* PLUIE */
+    [P_RAIN] = {{"PLUIE", "RAIN"}, {"NOTES QUI TOMBENT", "FALLING NOTES"}, 0, 100, 0, U_PCT, 0, 0},
+    [P_RRANGE] = {{"ETENDUE", "RANGE"}, {"ETENDUE (OCTAVES)", "RANGE (OCTAVES)"}, 1, 4, 2, U_INT, PF_NOMOD, 0},
+    [P_RLEN] = {{"DUREE", "LENGTH"}, {"DUREE DES GOUTTES", "DROP LENGTH"}, 0, 100, 50, U_TIME, 0, 0},
+    [P_LATCH] = {{"TENUE", "LATCH"}, {"TOUCHES TENUES", "LATCHED KEYS"}, 0, 1, 0, U_ENUM, C_, E_ONOFF},
 };
 
 /* the pages: four knobs each; a button opens its first page, then its next ones */
@@ -135,10 +175,13 @@ typedef struct {
 static const gpage_t PAGES[] = {
     {{"NUAGE", "CLOUD"}, {P_POS, P_SIZE, P_DENS, P_SPRAY}},
     {{"JEU", "PLAY"}, {P_PITCH, P_SPREAD, P_REV, P_STEREO}},
+    {{"SCENES", "SCENES"}, {P_MORPH, P_TAKEB, P_MUTB, P_AUTOM}},
     {{"SOURCE", "SOURCE"}, {P_SAMPLE, P_START, P_LEN, P_FINE}},
     {{"BALAYAGE", "SCAN"}, {P_SCAN, P_SPEED, P_RETRIG, P_KEYPOS}},
     {{"GRAIN", "GRAIN"}, {P_WIN, P_SKEW, P_QUANT, P_TIMING}},
     {{"TEXTURE", "TEXTURE"}, {P_JITTER, P_SHIMMER, P_GLIDE, P_SLEW}},
+    {{"DRONE", "DRONE"}, {P_STRETCH, P_DETUNE, P_SRC2, P_XFADE}},
+    {{"CHAOS", "CHAOS"}, {P_CHAOS, P_CHOP, P_CHDIV, P_CHPROB}},
     {{"AMPLI", "AMP ENV"}, {P_AATK, P_ADEC, P_ASUS, P_AREL}},
     {{"ENV MOD", "MOD ENV"}, {P_MATK, P_MDEC, P_MSUS, P_MREL}},
     {{"LFO 1", "LFO 1"}, {P_L1RATE, P_L1SHAPE, P_L1SYNC, P_L1MODE}},
@@ -146,15 +189,18 @@ static const gpage_t PAGES[] = {
     {{"FILTRE", "FILTER"}, {P_FTYPE, P_CUT, P_RES, P_DRIVE}},
     {{"ECHO", "ECHO"}, {P_DTIME, P_DFB, P_DTONE, P_DMIX}},
     {{"ESPACE", "SPACE"}, {P_RSIZE, P_RDEC, P_RDAMP, P_RMIX}},
+    {{"HALO", "HALO"}, {P_SHIM, P_SHINT, P_RESO, P_INFINI}},
     {{"MATIERE", "MATTER"}, {P_BITS, P_DOWN, P_WIDTH, P_LEVEL}},
+    {{"HACHOIR", "CHOPPER"}, {P_GATE, P_SWING, P_RING, P_FOLD}},
     {{"ARPEGE", "ARP"}, {P_ARP, P_ARPDIV, P_ARPOCT, P_ARPGATE}},
+    {{"PLUIE", "RAIN"}, {P_RAIN, P_RRANGE, P_RLEN, P_LATCH}},
     {{"GLOBAL", "GLOBAL"}, {P_VOICES, P_PORTA, P_SCALE, P_TONIC}},
     {{"HORLOGE", "CLOCK"}, {P_TEMPO, P_VELO, P_RECMODE, P_GESTLEN}},
     {{"HASARD", "CHANCE"}, {P_DICE, P_DOSE, P_TARGET, P_LANG}},
 };
 #define NPAGES (sizeof PAGES / sizeof PAGES[0])
-static const uint8_t GROUP_FIRST[NGR] = {0, 2, 4, 6, 8, 10, 14, 15};
-static const uint8_t GROUP_N[NGR] = {2, 2, 2, 2, 2, 4, 1, 3};
+static const uint8_t GROUP_FIRST[NGR] = {0, 3, 5, 9, 11, 13, 19, 21};
+static const uint8_t GROUP_N[NGR] = {3, 2, 4, 2, 2, 6, 2, 3};
 static const uint8_t GROUP_BTN[NGR] = {B_HOME, B_SEL, B_EDIT, B_ENV, B_LFO, B_FX, B_ARP, B_GLO};
 
 /* the language: 0 French, 1 English */
@@ -237,7 +283,7 @@ static void pfmt(int p, int32_t raw, char *b)
     const pdef_t *d = &PDEF[p];
     float n = pnorm_raw(p, raw), v;
     b[0] = 0;
-    if (p == P_SAMPLE) {
+    if (p == P_SAMPLE || p == P_SRC2) {
         s_cat(b, src_name(raw));
         return;
     }
@@ -318,7 +364,9 @@ static void pfmt(int p, int32_t raw, char *b)
         s_cat(b, "%");
         return;
     case P_L1RATE: case P_L2RATE:
-        if (G.v[p == P_L1RATE ? P_L1SYNC : P_L2SYNC]) {
+        if (G.v[p == P_L1RATE ? P_L1SYNC : P_L2SYNC] == 2)
+            v *= 0.05f;                              /* LENT: a twentieth */
+        if (G.v[p == P_L1RATE ? P_L1SYNC : P_L2SYNC] == 1) {
             static const char *const D[11] = {"8 MES", "4 MES", "2 MES", "1 MES", "1/2", "1/4", "1/8", "1/8T",
                                               "1/16", "1/16T", "1/32"};
             s_cat(b, D[clamp((int32_t)(n * 10.99f), 0, 10)]);
@@ -379,10 +427,33 @@ static void pfmt(int p, int32_t raw, char *b)
         s_fix(rnd(20.0f * fm_log2f(n * 2.0f) * 0.30103f * 10.0f), 1, b, 1);
         s_cat(b, " DB");
         return;
-    case P_DICE:
+    case P_DICE: case P_TAKEB: case P_MUTB:
         s_cat(b, TR("TOURNE", "TURN"));
         return;
-    case P_ARPOCT: case P_VOICES:
+    case P_STRETCH:
+        s_cat(b, "x");
+        {
+            char t[12];
+            s_fix(rnd(v * 10.0f), 1, t, 0);
+            s_cat(b, t);
+        }
+        return;
+    case P_RLEN:
+        fmt_secs(v, b);
+        return;
+    case P_RAIN: case P_AUTOM:
+        if (raw == 0) {
+            s_cat(b, "OFF");
+            return;
+        }
+        if (p == P_AUTOM) {                          /* a sweep's length */
+            fmt_secs(1.0f / v, b);
+            return;
+        }
+        s_fix(rnd(v * 10.0f), 1, b, 0);
+        s_cat(b, "/s");
+        return;
+    case P_ARPOCT: case P_VOICES: case P_RRANGE:
         s_int(raw, b, 0);
         return;
     default:

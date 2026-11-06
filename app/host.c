@@ -44,6 +44,16 @@ int app_expect(const char *what, int *got)
         *got = ui.ov;
     else if (!strcmp(what, "peak"))
         *got = GV.peak;
+    else if (!strcmp(what, "morph"))                 /* scene A -> B, % */
+        *got = (int)(GV.morph * 100.0f + 0.5f);
+    else if (!strcmp(what, "sceneb"))
+        *got = G_SCENEB_OK;
+    else if (!strcmp(what, "chop"))                  /* the chopper's mode acting now */
+        *got = GV.chop;
+    else if (!strcmp(what, "rain"))                  /* drops falling */
+        *got = GV.rain_n;
+    else if (!strcmp(what, "cap_wait"))
+        *got = GV.cap_wait;
     else if (!strcmp(what, "user_len0"))
         *got = (int)G_SRC[G_SRC_CAPT + 1].len;
     else if (!strncmp(what, "p.", 2)) {               /* p.N: parameter N's raw value */

@@ -48,6 +48,13 @@ enum {
     P_VOICES, P_PORTA, P_SCALE, P_TONIC,
     P_TEMPO, P_VELO, P_RECMODE, P_GESTLEN,
     P_DICE, P_DOSE, P_TARGET, P_LANG,
+    /* the pages for drones and glitches (each in a button's cycle: ui/params.c PAGES) */
+    P_STRETCH, P_DETUNE, P_SRC2, P_XFADE,  /* EDIT: DRONE */
+    P_CHAOS, P_CHOP, P_CHDIV, P_CHPROB,    /* EDIT: CHAOS */
+    P_SHIM, P_SHINT, P_RESO, P_INFINI,     /* FX: HALO */
+    P_GATE, P_SWING, P_RING, P_FOLD,       /* FX: HACHOIR */
+    P_MORPH, P_TAKEB, P_MUTB, P_AUTOM,     /* HOME: SCENES */
+    P_RAIN, P_RRANGE, P_RLEN, P_LATCH,     /* ARP: PLUIE */
     NP
 };
 
@@ -81,6 +88,10 @@ typedef struct {
     gmod_t mod[G_NMOD];
 } gstate_t;
 extern gstate_t G;
+
+/* scene B: the patch the MORPH knob leads to (the UI takes it, the engine blends toward it; not saved) */
+extern int16_t G_SCENEB[NP];
+extern volatile uint8_t G_SCENEB_OK;
 
 /* gesture lanes: a parameter's motion over the loop (normalized 0..1000) */
 typedef struct {
@@ -155,6 +166,12 @@ typedef struct {
     uint8_t grains_dropped;
     float tempo;                           /* the tempo playing (internal or MIDI) */
     uint8_t ext_clock;
+    float morph;                           /* scene A -> B now, 0..1 */
+    uint8_t chop;                          /* HACHE: the mode acting this step (0: none) */
+    uint8_t gate_step, gate_open;          /* MASQUE: the sixteenth (0..15), open now */
+    uint8_t cap_wait;                      /* the capture waits for a sound (SEUIL) */
+    float tape;                            /* the speed of every grain (FREIN, ENVOL), 1: as played */
+    uint8_t rain_n;                        /* PLUIE: notes falling now */
 } gview_t;
 extern gview_t GV;
 extern int16_t G_CAP[G_CAP_LEN];

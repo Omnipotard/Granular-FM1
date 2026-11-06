@@ -13,10 +13,10 @@
 #define APP_CANVAS_PX (240u * 80u)       /* the screen drawn in three bands of 80 rows (ui/draw.c) */
 #define APP_OVERLOAD                     /* the render over 90 % of its time: fewer grains for a moment */
 
-/* the store: the settings, the patches, the panel's calibration (the platform's); the user sources are in the
+/* the store: the settings, the patches (two halves of 8), the panel's calibration (the platform's); the user sources are in the
  * data area from 0x97000 (ui/store.c), beside them */
-enum { OBJ_SET, OBJ_BANK, OBJ_PANEL, OBJ_NOBJ };
-#define APP_STORE_MAP {0xFC000u, 0xD8000u, 0xDC000u}
+enum { OBJ_SET, OBJ_BANK, OBJ_PANEL, OBJ_BANK2, OBJ_NOBJ };   /* (numbers kept: the bank's second half is new) */
+#define APP_STORE_MAP {0xFC000u, 0xD8000u, 0xDC000u, 0xDA000u}
 
 /* the contract: the platform calls these */
 void app_init(void);

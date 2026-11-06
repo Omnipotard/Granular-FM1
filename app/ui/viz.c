@@ -13,32 +13,39 @@
 #define VH (VY1 - VY0)
 
 enum { VZ_NONE, VZ_GRAIN, VZ_SCAN, VZ_AENV, VZ_MENV, VZ_LFO1, VZ_LFO2, VZ_FILT, VZ_ECHO, VZ_SPACE, VZ_MATTER,
-       VZ_ARP, VZ_SCALE, VZ_CLOCK };
+       VZ_ARP, VZ_SCALE, VZ_CLOCK, VZ_SCENES, VZ_DRONE, VZ_CHAOS, VZ_HALO, VZ_CHOPPER, VZ_RAIN };
 
-static int viz_kind(void)
+static int viz_kind(void)                        /* the page, by its first knob */
 {
-    switch (cur_page()) {
-    case 3: return VZ_SCAN;
-    case 4: return VZ_GRAIN;
-    case 6: return VZ_AENV;
-    case 7: return VZ_MENV;
-    case 8: return VZ_LFO1;
-    case 9: return VZ_LFO2;
-    case 10: return VZ_FILT;
-    case 11: return VZ_ECHO;
-    case 12: return VZ_SPACE;
-    case 13: return VZ_MATTER;
-    case 14: return VZ_ARP;
-    case 15: return VZ_SCALE;
-    case 16: return VZ_CLOCK;
+    switch (PAGES[cur_page()].p[0]) {
+    case P_SCAN: return VZ_SCAN;
+    case P_WIN: return VZ_GRAIN;
+    case P_AATK: return VZ_AENV;
+    case P_MATK: return VZ_MENV;
+    case P_L1RATE: return VZ_LFO1;
+    case P_L2RATE: return VZ_LFO2;
+    case P_FTYPE: return VZ_FILT;
+    case P_DTIME: return VZ_ECHO;
+    case P_RSIZE: return VZ_SPACE;
+    case P_BITS: return VZ_MATTER;
+    case P_ARP: return VZ_ARP;
+    case P_VOICES: return VZ_SCALE;
+    case P_TEMPO: return VZ_CLOCK;
+    case P_MORPH: return VZ_SCENES;
+    case P_STRETCH: return VZ_DRONE;
+    case P_CHAOS: return VZ_CHAOS;
+    case P_SHIM: return VZ_HALO;
+    case P_GATE: return VZ_CHOPPER;
+    case P_RAIN: return VZ_RAIN;
     default: return VZ_NONE;
     }
 }
-/* the pictures that move on their own (an LFO runs, the clock ticks) */
+/* the pictures that move on their own (an LFO runs, the clock ticks, the morph sweeps, the rain falls) */
 static int viz_live(void)
 {
     int k = viz_kind();
-    return k == VZ_LFO1 || k == VZ_LFO2 || (k == VZ_CLOCK && GP.running);
+    return k == VZ_LFO1 || k == VZ_LFO2 || (k == VZ_CLOCK && GP.running) || (k == VZ_SCENES && G.v[P_AUTOM]) ||
+           (k == VZ_CHAOS && G.v[P_CHOP]) || (k == VZ_CHOPPER && G.v[P_GATE]) || (k == VZ_RAIN && (G.v[P_RAIN] || GV.rain_n));
 }
 
 static float vz_n(int p)                       /* the parameter as playing now, 0..1 */
@@ -449,6 +456,214 @@ static void vz_clock(void)
     }
 }
 
+
+/* --------------------------------------------------------------------------------------------- the scenes --- */
+static void vz_scenes(void)
+{
+    float m = GV.morph;
+    int p, n = 0;
+    int32_t x, bx = VX0 + 14, bw = VW - 28, y = VY0 + 10;
+    vz_panel(0, 0);
+    d_text(VX0, VY0 - 2, &FONT_XS, "A", KNOB_RGB[0]);
+    d_text_r(VX1, VY0 - 2, &FONT_XS, "B", KNOB_RGB[2]);
+    if (!G_SCENEB_OK) {
+        d_text_c(SW / 2, (VY0 + VY1) / 2 - 12, &FONT_XS, TR("PAS DE SCENE B", "NO SCENE B"), K_SOFT);
+        d_text_c(SW / 2, (VY0 + VY1) / 2 + 2, &FONT_XS, TR("K2: PRENDRE   K3: MUTER", "K2: TAKE   K3: MUTATE"), K_DIM);
+        return;
+    }
+    /* the morph: a bar from A to B */
+    d_rbox(bx, y, bw, 6, 3, K_LINE, 255);
+    d_rbox(bx, y, (int32_t)((float)bw * m) + 1, 6, 3, mix8(KNOB_RGB[0], KNOB_RGB[2], (uint32_t)(m * 256.0f)), 255);
+    d_glow((float)bx + (float)bw * m, (float)y + 3.0f, 4.0f, K_TEXT, 230);
+    /* what differs: a line for each parameter that B moves, where it is now between A and B */
+    for (p = 0; p < NP && n < 48; p++) {
+        float a, b, now;
+        int32_t cy;
+        if ((PDEF[p].flags & (PF_GLOBAL | PF_ACTION | PF_ENUM)) || p == P_MORPH || p == P_AUTOM || G.v[p] == G_SCENEB[p])
+            continue;
+        a = pnorm(p);
+        b = pnorm_raw(p, G_SCENEB[p]);
+        now = a + (b - a) * m;
+        x = bx + (n % 24) * bw / 24 + 2;
+        cy = y + 14 + (n / 24) * 30;
+        d_vline(x, cy, 26, K_GRID, 255);
+        d_rect_a(x - 1, cy + 26 - (int32_t)(a * 26.0f), 3, 1, KNOB_RGB[0], 255);
+        d_rect_a(x - 1, cy + 26 - (int32_t)(b * 26.0f), 3, 1, KNOB_RGB[2], 255);
+        d_glow((float)x, (float)cy + 26.0f - now * 26.0f, 1.6f, K_TEXT, 220);
+        n++;
+    }
+    if (!n)
+        d_text_c(SW / 2, y + 30, &FONT_XS, TR("A = B : CHANGE DES KNOBS", "A = B: TURN SOME KNOBS"), K_DIM);
+}
+
+/* ---------------------------------------------------------------------------------------------- the drone --- */
+static void vz_drone(void)
+{
+    float st = pval(P_STRETCH, vz_n(P_STRETCH)), det = vz_n(P_DETUNE), bl = vz_n(P_XFADE);
+    float len = fm_minf(0.92f, 0.12f * st), mid = (float)(VY0 + VY1) * 0.5f;
+    int i, voices = clamp(G.v[P_VOICES], 1, G_MAXV);
+    int32_t x;
+    vz_panel(0, 0);
+    /* the long grains: windows that overlap, more of them as they stretch */
+    for (i = 0; i < 9; i++) {
+        float x0 = (float)i / 9.0f - len * 0.5f, px = 0.0f, py = 0.0f;
+        rgb_t c = vz_rnd((uint32_t)i + 3u) < bl ? KNOB_RGB[3] : KNOB_RGB[0];
+        for (x = 0; x <= 40; x++) {
+            float t = (float)x / 40.0f, gx = (float)VX0 + (x0 + t * len) * (float)VW;
+            float gy = mid + 8.0f - (0.5f - 0.5f * fm_sin_turns(t + 0.25f)) * (float)(VH / 2 - 6);
+            if (gx < (float)VX0 || gx > (float)VX1)
+                continue;
+            if (x)
+                d_line(px, py, gx, gy, c, 150);
+            px = gx;
+            py = gy;
+        }
+    }
+    /* the chorus: each voice a line, apart in pitch and in space */
+    for (i = 0; i < voices; i++) {
+        static const float VD[G_MAXV] = {0.0f, 0.18f, -0.18f, 0.09f, -0.27f, 0.27f};
+        float y = (float)VY1 - 10.0f - VD[i] * det * 40.0f;
+        d_hline(VX0 + 10 + i * 4, (int32_t)y, VW - 20 - i * 8, KNOB_RGB[1], 90u + (uint32_t)(det * 140.0f));
+    }
+    /* A and B: how much of each */
+    d_rect_a(VX0, VY0 - 2, (int32_t)((float)VW * (1.0f - bl)), 3, KNOB_RGB[0], 220);
+    d_rect_a(VX0 + (int32_t)((float)VW * (1.0f - bl)), VY0 - 2, (int32_t)((float)VW * bl), 3, KNOB_RGB[3], 220);
+}
+
+/* ---------------------------------------------------------------------------------------------- the chaos --- */
+static void vz_chaos(void)
+{
+    static const float DV[4] = {1.0f, 0.5f, 0.25f, 0.125f};
+    float ch = vz_n(P_CHAOS), prob = vz_n(P_CHPROB), beat = (float)GV.beat_q16 / 65536.0f;
+    float div = DV[clamp(G.v[P_CHDIV], 0, 3)];
+    int mode = G.v[P_CHOP], i, steps = (int)(4.0f / div), now = (int)(fm_floorf(beat / div)) % (steps > 0 ? steps : 1);
+    int32_t cw;
+    vz_panel(0, 0);
+    /* the wild grains: dots thrown about, more as CHAOS rises */
+    for (i = 0; i < 40; i++)
+        if (vz_rnd((uint32_t)i * 7u + 1u) < ch)
+            d_glow((float)VX0 + vz_rnd((uint32_t)i * 7u + 2u) * (float)VW,
+                   (float)VY0 + vz_rnd((uint32_t)i * 7u + 3u) * (float)(VH - 30), 1.4f + 2.0f * vz_rnd((uint32_t)i + 9u),
+                   KNOB_RGB[0], 200);
+    /* the chopper: a bar of steps, each lit with the chance it acts; the one acting now */
+    if (steps > 32)
+        steps = 32;
+    cw = VW / steps;
+    for (i = 0; i < steps; i++) {
+        int on = mode && i == now && GV.chop;
+        rgb_t c = on ? (GV.chop == 3 ? K_REC : GV.chop == 4 ? KNOB_RGB[2] : KNOB_RGB[1]) : K_LINE;
+        int32_t h = 4 + (int32_t)(prob * 14.0f);
+        d_rbox(VX0 + i * cw + 1, VY1 - h, cw - 2, h, 2, c, on ? 255 : mode ? 200 : 120);
+    }
+    if (GV.chop == 3 || GV.chop == 4) {                         /* the tape's speed */
+        int32_t w = (int32_t)(fm_minf(GV.tape, 2.0f) * 0.5f * (float)VW);
+        d_rect_a(VX0, VY1 - 24, w, 2, GV.chop == 3 ? K_REC : KNOB_RGB[2], 255);
+    }
+}
+
+/* ----------------------------------------------------------------------------------------------- the halo --- */
+static void vz_halo(void)
+{
+    float sh = vz_n(P_SHIM), rs = vz_n(P_RESO), inf = vz_n(P_INFINI);
+    int iv = clamp(G.v[P_SHINT], 0, 3), i, k;
+    vz_panel(0, 0);
+    /* the shimmer: copies of the sound climbing (or falling), each fainter */
+    for (k = 0; k < 5; k++) {
+        float y = iv == 3 ? (float)VY0 + 8.0f + (float)k * 14.0f : (float)VY1 - 8.0f - (float)k * 14.0f;
+        uint32_t a = sh < 0.005f ? 0u : (uint32_t)((90.0f + sh * 165.0f) * (1.0f - (float)k * 0.17f));
+        if (a < 10u)
+            continue;
+        for (i = 0; i < 5; i++)
+            d_glow((float)VX0 + 18.0f + (float)i * 12.0f + (float)k * (iv == 1 ? 4.0f : 7.0f), y, 2.0f, KNOB_RGB[0], a);
+    }
+    /* the resonators: three strings on the chord, ringing with RESONAT */
+    for (k = 0; k < 3; k++) {
+        static const float FR[3] = {1.0f, 1.4983f, 2.5198f};
+        int32_t x = VX0 + 100 + k * 34, x2;
+        float amp = rs * 9.0f, py = 0.0f;
+        for (x2 = 0; x2 <= VH; x2++) {
+            float y = (float)(VY0 + x2), dx = amp * fm_sin_turns((float)x2 / (float)VH * FR[k] * 2.0f);
+            if (x2)
+                d_line((float)x + py, y - 1.0f, (float)x + dx, y, KNOB_RGB[2], 120u + (uint32_t)(rs * 130.0f));
+            py = dx;
+        }
+    }
+    /* INFINI: a frozen bar across, as it holds */
+    if (inf > 0.01f) {
+        d_rect_a(VX0, VY1 - 6, VW, 4, KNOB_RGB[3], (uint32_t)(inf * 200.0f));
+        d_glow((float)VX1 - 4.0f, (float)VY1 - 4.0f, 3.0f + 3.0f * inf, KNOB_RGB[3], 230);
+    }
+}
+
+/* -------------------------------------------------------------------------------------------- the chopper --- */
+static void vz_chopper(void)
+{
+    static const uint16_t PAT[8] = {0xFFFF, 0x5555, 0x1449, 0x4949, 0xDDDD, 0xFFFF, 0x1111, 0xFFFF};
+    static const float LEN[8] = {1.0f, 0.6f, 0.7f, 0.7f, 0.55f, 0.3f, 0.5f, 0.75f};
+    int pat = clamp(G.v[P_GATE], 0, 7), i;
+    float sw = vz_n(P_SWING), ring = vz_n(P_RING), fold = vz_n(P_FOLD), mid = (float)VY0 + 16.0f, px = 0.0f, py = 0.0f;
+    int32_t x, cw = VW / 16;
+    vz_panel(0, 0);
+    /* the gate: sixteen steps, the odd ones late with the swing */
+    for (i = 0; i < 16; i++) {
+        int on = pat ? (pat == 7 ? (int)(vz_hash((uint32_t)i) & 1u) : (int)(PAT[pat] >> i & 1u)) : 1;
+        float off = (i & 1) ? sw * 0.5f * (float)cw : 0.0f, w = (float)cw * LEN[pat] * ((i & 1) ? 1.0f - sw * 0.5f : 1.0f);
+        int now = pat && GV.gate_step == i;
+        d_rbox(VX0 + i * cw + (int32_t)off, VY1 - 22, (int32_t)fm_maxf(w - 1.0f, 2.0f), 20, 2,
+               on ? (now && GV.gate_open ? K_TEXT : KNOB_RGB[0]) : K_LINE, on ? 230 : 140);
+    }
+    /* the ring and the fold, on a sine */
+    for (x = VX0; x <= VX1; x++) {
+        float t = (float)(x - VX0) / (float)VW, v = fm_sin_turns(t * 2.0f), y;
+        if (fold > 0.005f) {
+            float g = 1.0f + 7.0f * fold, w = fm_minf(1.0f, fold * 3.0f);
+            v += (0.8f * fm_sin_turns(v * g * 0.25f) - v) * w;
+        }
+        v *= 1.0f - ring + ring * 1.6f * fm_sin_turns(t * 2.0f * 7.07f);
+        y = mid + 10.0f - v * 16.0f;
+        if (x > VX0)
+            vz_seg(px, py, (float)x, y, ring > fold ? KNOB_RGB[2] : KNOB_RGB[3], 220);
+        px = (float)x;
+        py = y;
+    }
+}
+
+/* ----------------------------------------------------------------------------------------------- the rain --- */
+static void vz_rain(void)
+{
+    uint16_t mask = G_SCALE_MASK[clamp(G.v[P_SCALE], 0, G_NSCALE - 1)];
+    int tonic = clamp(G.v[P_TONIC], 0, 11), range = clamp(G.v[P_RRANGE], 1, 4), n = range * 12 + 1, i, j;
+    float rate = vz_n(P_RAIN), len = vz_n(P_RLEN);
+    uint32_t t = plat_ms() / 30u;
+    int32_t kw = VW / n > 1 ? VW / n : 1;
+    vz_panel(0, 0);
+    for (i = 0; i < n; i++) {                                   /* the notes the rain may fall on */
+        int in = mask >> ((i + 12) % 12) & 1;
+        d_rect_a(VX0 + i * kw, VY1 - 6, kw - 1, 6, in ? ((i % 12) ? KNOB_RGB[2] : KNOB_RGB[0]) : K_GRID, in ? 200 : 255);
+    }
+    (void)tonic;
+    if (!G.v[P_RAIN])
+        return;
+    for (j = 0; j < 14; j++) {                                  /* drops, more as it rains harder */
+        uint32_t seed = (uint32_t)j * 97u, cyc;
+        float speed = 0.6f + vz_rnd(seed) * 0.8f, ph;
+        int k;
+        if (vz_rnd(seed + 1u) > rate * 1.4f)
+            continue;
+        ph = (float)t * speed * 0.03f + vz_rnd(seed + 2u);
+        cyc = (uint32_t)ph;
+        ph -= (float)cyc;
+        k = (int)(vz_rnd(seed + cyc * 13u) * (float)n);
+        for (i = 0; i < 12 && !(mask >> ((k + 12) % 12) & 1); i++)
+            k = (k + 1) % n;
+        {
+            float x = (float)(VX0 + k * kw) + (float)kw * 0.5f, y = (float)VY0 + ph * (float)(VH - 8);
+            d_line(x, y - 4.0f - len * 10.0f, x, y, KNOB_RGB[1], 180);
+            d_glow(x, y, 2.0f, KNOB_RGB[1], 230);
+        }
+    }
+}
+
 static void draw_viz(void)
 {
     switch (viz_kind()) {
@@ -465,6 +680,12 @@ static void draw_viz(void)
     case VZ_ARP: vz_arp(); break;
     case VZ_SCALE: vz_scale(); break;
     case VZ_CLOCK: vz_clock(); break;
+    case VZ_SCENES: vz_scenes(); break;
+    case VZ_DRONE: vz_drone(); break;
+    case VZ_CHAOS: vz_chaos(); break;
+    case VZ_HALO: vz_halo(); break;
+    case VZ_CHOPPER: vz_chopper(); break;
+    case VZ_RAIN: vz_rain(); break;
     default: break;
     }
 }

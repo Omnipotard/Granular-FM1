@@ -66,6 +66,10 @@ float pval(int p, float n)
     case P_WIDTH: return 2.0f * n;
     case P_RDEC: return 0.3f * fm_exp2f(n * 7.0f);            /* RT60 s */
     case P_DOWN: return 1.0f + 31.0f * n * n;                 /* sample-and-hold factor */
+    case P_STRETCH: return fm_exp2f(3.0f * n);                /* x1 .. x8 */
+    case P_RAIN: return n < 0.005f ? 0.0f : expr(n, 0.2f, 60.0f);    /* notes/s: 0.2 .. 12 */
+    case P_RLEN: return expr(n, 0.05f, 160.0f);               /* s: 0.05 .. 8 */
+    case P_AUTOM: return n < 0.005f ? 0.0f : expr(n, 1.0f / 60.0f, 30.0f);   /* sweeps/s: 1 a minute .. 1 in 2 s */
     default: return n;
     }
 }
@@ -76,6 +80,7 @@ static const float DIV_LFO[11] = {32.0f, 16.0f, 8.0f, 4.0f, 2.0f, 1.0f, 0.5f, 1.
 static const float DIV_DELAY[13] = {1.0f / 32, 1.0f / 16, 0.125f, 1.0f / 6, 0.25f, 1.0f / 3, 0.375f, 0.5f, 2.0f / 3,
                                     0.75f, 1.0f, 4.0f / 3, 1.5f};
 static const float DIV_ARP[6] = {1.0f, 0.5f, 1.0f / 3, 0.25f, 1.0f / 6, 0.125f};
+static const float DIV_CHOP[4] = {1.0f, 0.5f, 0.25f, 0.125f};
 
 /* ------------------------------------------------------------------------------------------------- events --- */
 #define QN 64u
@@ -213,6 +218,21 @@ static int32_t arp_key = -1;                               /* the voice key now 
 static float arp_off_at = -1.0f;                           /* free beat at which it ends */
 static float arp_last_beat = -1.0f;
 
+/* -------------------------------------------------------------------------------- scenes, chop, rain ----- */
+int16_t G_SCENEB[NP];
+volatile uint8_t G_SCENEB_OK;
+static float morph_ph, morph_now;
+static float chop_last = -1.0f;                            /* the step the chopper last looked at */
+static int chop_mode;                                      /* acting this step: 0 none, 1 stutter, 2 roll, 3 brake, 4 rise */
+static int chop_roll;                                      /* ROLL: steps in a row, each finer */
+static float chop_t0, chop_len;                            /* the step's start and length, in beats */
+static float tape = 1.0f;                                  /* every grain's speed now */
+typedef struct { int32_t key; uint32_t off; } drop_t;
+#define NDROP 8
+static drop_t drop[NDROP];
+static float rain_next;                                    /* samples to the next drop */
+static uint32_t rain_k;
+
 /* --------------------------------------------------------------------------------------------- the echo --- */
 static int16_t dly[2][DLY_LEN] PLAT_POOL;
 static uint32_t dly_w;
@@ -233,10 +253,24 @@ static uint32_t ap_w[AP_N];
 
 /* --------------------------------------------------------------------------------------------- the rest --- */
 static float crush_hold[2], crush_cnt;
+/* the shimmer: a two-tap pitch shifter on the space's output, fed back into it */
+#define SH_N 2048u
+static int16_t sh_buf[SH_N] PLAT_POOL;
+static uint32_t sh_w;
+static float sh_d[2], sh_y;
+/* the tuned resonators: three combs on the newest note's chord */
+#define RS_N 1536u
+#define RS_K 3
+static int16_t rs_buf[RS_K][RS_N] PLAT_POOL;
+static uint32_t rs_w;
+static float rs_d[RS_K] = {400.0f, 300.0f, 200.0f}, rs_lp[RS_K];
+/* the gate, the ring, the fold */
+static float gate_env = 1.0f, ring_ph;
+static uint32_t gate_rnd;
 static float out_peak;
 static uint32_t cap_w, cap_acc_n;
 static float cap_acc;
-static uint8_t cap_on, cap_loop, cap_full;
+static uint8_t cap_on, cap_loop, cap_full, cap_wait;
 
 /* ======================================================================================================== */
 static void src_init(void)
@@ -274,6 +308,8 @@ void eng_init(void)
     }
     for (i = 0; i < 2; i++)
         lfo[i].ph = 0.25f * (float)i;
+    for (i = 0; i < NDROP; i++)
+        drop[i].key = -1;
     win_init();
     win_make(0.33f, 0.0f);
 }
@@ -441,12 +477,26 @@ static void take_events(void)
         case EV_NOTE_ON: {                               /* a: key; b: note | vel << 8 | (slice + 1) << 16 */
             int32_t note = b & 0xFF, slice = ((b >> 16) & 0xFF) - 1;
             float vel = (float)((b >> 8) & 0x7F) / 127.0f;
+            if (G.v[P_LATCH]) {                          /* TENUE: a key held lets go on its next press */
+                int i, was = 0;
+                for (i = 0; i < nheld; i++)
+                    if (held[i].key == a)
+                        was = 1;
+                if (was) {
+                    held_remove(a);
+                    if (!G.v[P_ARP])
+                        note_off(a);
+                    break;
+                }
+            }
             held_add(a, note, slice, vel);
             if (!G.v[P_ARP])
                 note_on(a, note, slice, vel);
             break;
         }
         case EV_NOTE_OFF:
+            if (G.v[P_LATCH] && a < 400)                 /* TENUE: the key stays (the rain's drops still end) */
+                break;
             held_remove(a);
             if (!G.v[P_ARP])
                 note_off(a);
@@ -456,6 +506,8 @@ static void take_events(void)
             nheld = 0;
             for (i = 0; i < G_MAXV; i++)
                 V[i].gate = 0;
+            for (i = 0; i < NDROP; i++)
+                drop[i].key = -1;
             arp_key = -1;
             break;
         }
@@ -502,7 +554,8 @@ static void take_events(void)
         case EV_CAPTURE:                                 /* a: 1 start, 0 stop; b: loop */
             if (a) {
                 cap_on = 1;
-                cap_loop = (uint8_t)b;
+                cap_loop = (uint8_t)(b == 1);
+                cap_wait = (uint8_t)(b == 2);
                 cap_w = 0;
                 cap_acc = 0.0f;
                 cap_acc_n = 0;
@@ -542,12 +595,12 @@ static void lfo_run(uint32_t n, float tempo, float beat)
     for (i = 0; i < 2; i++) {
         int pr = i ? P_L2RATE : P_L1RATE, ps = i ? P_L2SHAPE : P_L1SHAPE, py = i ? P_L2SYNC : P_L1SYNC;
         float old = lfo[i].ph;
-        if (G.v[py]) {                                  /* tempo: locked to the clock */
+        if (G.v[py] == 1) {                             /* tempo: locked to the clock */
             int d = clamp((int32_t)(gn[pr] * 10.99f), 0, 10);
             float cyc = DIV_LFO[d], b = beat / cyc;
             lfo[i].ph = b - fm_floorf(b);
         } else {
-            lfo[i].ph += pval(pr, gn[pr]) * (float)n / (float)G_SR;
+            lfo[i].ph += pval(pr, gn[pr]) * (G.v[py] == 2 ? 0.05f : 1.0f) * (float)n / (float)G_SR;   /* LENT: /20 */
             if (lfo[i].ph >= 1.0f)
                 lfo[i].ph -= fm_floorf(lfo[i].ph);
         }
@@ -567,6 +620,19 @@ static void params_chunk(float beat_lane)
     float bars = (float)(1 << clamp(G.v[P_GESTLEN], 0, 3));
     for (p = 0; p < NP; p++)
         gn[p] = pnorm(p);
+    {                                                   /* the scenes: A (the knobs) toward B */
+        float m = clamp01(gn[P_MORPH]), au = pval(P_AUTOM, gn[P_AUTOM]);
+        if (au > 0.0f) {
+            morph_ph += au * (float)CH / (float)G_SR;
+            morph_ph -= fm_floorf(morph_ph);
+            m += (1.0f - m) * (0.5f - 0.5f * fm_cosf(2.0f * PI_F * morph_ph));
+        }
+        morph_now = G_SCENEB_OK ? m : 0.0f;
+        if (morph_now > 0.001f)
+            for (p = 0; p < NP; p++)
+                if (!(PDEF[p].flags & (PF_GLOBAL | PF_ACTION)) && p != P_MORPH && p != P_AUTOM)
+                    gn[p] += (pnorm_raw(p, G_SCENEB[p]) - gn[p]) * morph_now;
+    }
     if (GP.running) {                                   /* the gestures, over the base */
         float lp = beat_lane / (bars * 4.0f);
         int step = (int)((lp - fm_floorf(lp)) * (float)G_LANE_STEPS);
@@ -707,31 +773,65 @@ static void grain_spawn(voice_t *v, uint32_t offset, float pitch_base, const gsr
             GV.grains_dropped++;
         return;
     }
-    size_s = pval(P_SIZE, v->vn[P_SIZE]);
+    size_s = pval(P_SIZE, v->vn[P_SIZE]) * pval(P_STRETCH, v->vn[P_STRETCH]);   /* ETIRE: up to 16 s */
     if (pads & 1u << PAD_POUSS)
         size_s *= 0.25f;
+    if (size_s > 16.0f)
+        size_s = 16.0f;
     if (v->stut_on)
-        size_s = fm_minf(size_s, 0.12f);
+        size_s = fm_minf(size_s, chop_mode == 2 ? 0.06f : 0.12f);
     spray = clamp01(v->vn[P_SPRAY] + ((pads & 1u << PAD_DERIVE) ? 0.45f : 0.0f));
     if (v->stut_on)
         p = v->stutter;
     else
         p = v->pos_eff + spray * (g_randf() - 0.5f);
     p -= fm_floorf(p);
-    idx = (float)v->ws + p * (float)v->wl;
     semis = pitch_base + spread_quant(randb() * pval(P_SPREAD, v->vn[P_SPREAD]), G.v[P_QUANT], v->note);
     if (g_randf() < v->vn[P_SHIMMER] * 0.6f)
         semis += g_randf() < 0.25f ? 19.0f : 12.0f;
-    ratio = (float)s->rate / (float)G_SR * semis_ratio(semis);
+    semis += randb() * 0.12f * clamp01(v->vn[P_DETUNE]);  /* CHOEUR: each grain a little off */
     rev = g_randf() < v->vn[P_REV] || (pads & 1u << PAD_ENVERS);
+    glide = pval(P_GLIDE, v->vn[P_GLIDE]);
+    /* CHAOS: now and then a grain goes its own way */
+    if (g_randf() < clamp01(v->vn[P_CHAOS]) * 0.7f) {
+        switch (g_rand() % 6u) {
+        case 0: rev = !rev; break;
+        case 1: semis += g_randf() < 0.5f ? -12.0f : 12.0f; break;
+        case 2: size_s *= 0.12f; break;                 /* a click */
+        case 3: p = g_randf(); break;                   /* anywhere in the window */
+        case 4: glide = g_randf() < 0.5f ? -24.0f : 24.0f; break;
+        default: return;                                /* a hole */
+        }
+    }
+    /* MELANGE: some grains read source B, at the same place in it */
+    {
+        int sb = clamp(G.v[P_SRC2], 0, G_NSRC - 1);
+        const gsrc_t *s2 = &G_SRC[sb];
+        float fws = (float)v->ws / (float)s->len, fwl = (float)v->wl / (float)s->len;
+        if (s2 != s && s2->len >= 64u && g_randf() < clamp01(v->vn[P_XFADE])) {
+            s = s2;
+            g->ws = (int32_t)(fws * (float)s->len);
+            g->wl = (int32_t)(fwl * (float)s->len);
+            if (g->wl < 32)
+                g->wl = 32;
+        } else {
+            g->ws = v->ws;
+            g->wl = v->wl;
+        }
+    }
+    idx = (float)g->ws + p * (float)g->wl;
+    ratio = (float)s->rate / (float)G_SR * semis_ratio(semis);
     dens = pval(P_DENS, v->vn[P_DENS]);
     overlap = dens * size_s;
     amp = overlap > 1.0f ? fm_rsqrtf(overlap) : 1.0f;
     amp *= 1.0f - v->vn[P_JITTER] * g_randf();
     c = (g_randf() - 0.5f) * (clamp01(v->vn[P_STEREO]) + ((pads & 1u << PAD_DERIVE) ? 1.0f : 0.0f));
+    {                                                   /* CHOEUR: each voice its own side */
+        static const float VPAN[G_MAXV] = {0.0f, 0.35f, -0.35f, 0.2f, -0.2f, 0.45f};
+        c += VPAN[v - V] * clamp01(v->vn[P_DETUNE]);
+    }
     c = fm_clampf(c, -0.5f, 0.5f);
     th = (0.5f + c) * (PI_F * 0.5f);
-    glide = pval(P_GLIDE, v->vn[P_GLIDE]);
     {
         float chunks = size_s * (float)G_SR / 16.0f;
         g->rmul = glide != 0.0f && chunks > 1.0f ? semis_ratio(glide / chunks) : 1.0f;
@@ -758,8 +858,6 @@ static void grain_spawn(voice_t *v, uint32_t offset, float pitch_base, const gsr
     g->voice = (uint8_t)(v - V);
     g->rev = (uint8_t)rev;
     g->pan = (int8_t)clamp((int32_t)(c * 128.0f), -64, 64);
-    g->ws = v->ws;
-    g->wl = v->wl;
     g->semis = (int8_t)clamp((int32_t)(semis - pitch_base + (semis > pitch_base ? 0.5f : -0.5f)), -60, 60);
     g->sizec = (uint8_t)clamp((int32_t)(fm_log2f(size_s * 200.0f) * 28.0f), 0, 255);
     g->on = 1;
@@ -782,7 +880,7 @@ static void grain_run(grain_t *g, uint32_t n)
     while (i < n) {
         uint32_t end = i + 16u, finc;
         int32_t iinc;
-        float rate = g->rate, fi;
+        float rate = g->rate * tape, fi;                 /* FREIN / ENVOL: every grain's speed */
         if (end > n)
             end = n;
         /* the rate as a whole and a Q32 fraction (signed: the whole part floors) */
@@ -820,7 +918,7 @@ static void grain_run(grain_t *g, uint32_t n)
             }
             wph += winc;
         }
-        g->rate = rate * g->rmul;
+        g->rate *= g->rmul;
     }
     g->wph = wph;
     g->frac = frac;
@@ -844,7 +942,7 @@ static void voice_scan(voice_t *v, const gsrc_t *s, uint32_t n, int shared)
     int mode = G.v[P_SCAN];
     if (GP.freeze || (GP.pads & 1u << PAD_GEL) || v->wl < 2)
         return;
-    d = sp * (float)n * ((float)s->rate / (float)G_SR) / (float)v->wl;
+    d = sp * tape * (float)n * ((float)s->rate / (float)G_SR) / (float)v->wl;
     switch (mode) {
     case 0:                                             /* loop */
         *scan += d;
@@ -911,7 +1009,7 @@ static void voice_chunk(voice_t *v, uint32_t n, float beat0, float bps)
         pos += pval(P_KEYPOS, v->vn[P_KEYPOS]) * (float)(v->note - 60) / 24.0f;
     v->pos_eff = pos - fm_floorf(pos);
     /* BEGAIE: the position held, the grains on the sixteenths */
-    if (pads & 1u << PAD_BEGAIE) {
+    if ((pads & 1u << PAD_BEGAIE) || chop_mode == 1 || chop_mode == 2) {   /* the pad, or the chopper */
         if (!v->stut_on) {
             v->stut_on = 1;
             v->stutter = v->pos_eff;
@@ -933,6 +1031,10 @@ static void voice_chunk(voice_t *v, uint32_t n, float beat0, float bps)
         pitch_base += 12.0f;
     if (pads & 1u << PAD_QUINTE)
         pitch_base += 7.0f;
+    {                                                   /* CHOEUR: each voice a little off, apart */
+        static const float VDET[G_MAXV] = {0.0f, 0.18f, -0.18f, 0.09f, -0.27f, 0.27f};
+        pitch_base += VDET[v - V] * clamp01(v->vn[P_DETUNE]);
+    }
     /* grains: when, then each */
     if (v->stage || v->gate) {
         int timing = G.v[P_TIMING];
@@ -941,7 +1043,9 @@ static void voice_chunk(voice_t *v, uint32_t n, float beat0, float bps)
             dens *= 4.0f;
         if (timing == 2 || v->stut_on) {                  /* on the clock's divisions */
             int di = clamp((int32_t)(v->vn[P_DENS] * 9.99f), 0, 9);
-            float div = v->stut_on ? 0.25f : DIV_SYNC_GRAIN[di], b0 = beat0 / div, b1 = (beat0 + bps * (float)n) / div;
+            float div = v->stut_on ? (chop_mode == 2 ? chop_len / (float)(2 << clamp(chop_roll, 0, 3))
+                                      : chop_mode == 1 ? fm_minf(chop_len, 0.25f) : 0.25f)
+                                   : DIV_SYNC_GRAIN[di], b0 = beat0 / div, b1 = (beat0 + bps * (float)n) / div;
             float k = fm_floorf(b0) + 1.0f;
             if (v->next <= 0.0f && v->stage == 1 && v->lev == 0.0f) {
                 grain_spawn(v, 0, pitch_base, s);         /* a note starts with a grain */
@@ -1099,6 +1203,115 @@ static void arp_tick(float beat_free, float bps)
     (void)bps;
 }
 
+/* ========================================================================================= the chopper ===== */
+/* HACHE: on each step of the clock, by chance, the sound stutters, rolls, brakes or rises */
+static void chop_tick(float beat)
+{
+    int mode = G.v[P_CHOP];
+    float div = DIV_CHOP[clamp(G.v[P_CHDIV], 0, 3)], b = fm_floorf(beat / div), prog;
+    if (!mode) {
+        chop_mode = chop_roll = 0;
+        chop_last = -1.0f;
+        tape = 1.0f;
+        return;
+    }
+    if (b != chop_last) {
+        chop_last = b;
+        chop_t0 = b * div;
+        chop_len = div;
+        if (g_randf() < clamp01(gn[P_CHPROB])) {
+            int m = mode == 5 ? 1 + (int)(g_rand() % 4u) : mode;
+            chop_roll = chop_mode == 2 && m == 2 ? chop_roll + 1 : 0;
+            chop_mode = m;
+        } else {
+            chop_mode = chop_roll = 0;
+        }
+    }
+    prog = clamp01((beat - chop_t0) / chop_len);
+    if (chop_mode == 3)
+        tape = 1.0f - 0.97f * fm_sqrtf(prog);          /* the tape stops */
+    else if (chop_mode == 4)
+        tape = 1.0f + prog * prog;                      /* and runs away, up to the octave */
+    else
+        tape = 1.0f;
+}
+
+/* ============================================================================================ the rain ===== */
+/* PLUIE: notes of the scale fall by themselves, at random, each its own length */
+static void rain_tick(uint32_t n)
+{
+    float rate = pval(P_RAIN, gn[P_RAIN]);
+    int i, k = 0;
+    for (i = 0; i < NDROP; i++)
+        if (drop[i].key >= 0 && (int32_t)(sample_count - drop[i].off) >= 0) {
+            note_off(drop[i].key);
+            drop[i].key = -1;
+        }
+    if (rate > 0.0f) {
+        rain_next -= (float)n;
+        while (rain_next <= 0.0f) {
+            float u = fm_maxf(0.02f, g_randf());
+            int range = clamp(G.v[P_RRANGE], 1, 4), tonic = clamp(G.v[P_TONIC], 0, 11), note, slot = (int)(rain_k % NDROP);
+            rain_next += (float)G_SR / rate * fm_clampf(-fm_logf(u), 0.1f, 4.0f);
+            note = scale_snap(48 + tonic + (int)(g_rand() % (uint32_t)(range * 12 + 1)), G.v[P_SCALE], tonic);
+            if (drop[slot].key >= 0)
+                note_off(drop[slot].key);
+            drop[slot].key = 400 + (int32_t)(rain_k % 64u);
+            drop[slot].off = sample_count + (uint32_t)(pval(P_RLEN, gn[P_RLEN]) * (0.5f + g_randf()) * (float)G_SR);
+            note_on(drop[slot].key, note, -1, 0.35f + 0.65f * g_randf());
+            rain_k++;
+        }
+    } else {
+        rain_next = 0.0f;
+    }
+    for (i = 0; i < NDROP; i++)
+        k += drop[i].key >= 0;
+    GV.rain_n = (uint8_t)k;
+}
+
+/* ======================================================================================== the gate ======= */
+/* MASQUE: sixteen steps open or shut the sound, with a swing; the effects' tails go on */
+static float gate_tgt = 1.0f;
+static void gate_tick(float beat)
+{
+    static const uint16_t PAT[8] = {0xFFFF, 0x5555, 0x1449, 0x4949, 0xDDDD, 0xFFFF, 0x1111, 0xFFFF};
+    static const float LEN[8] = {1.0f, 0.6f, 0.7f, 0.7f, 0.55f, 0.3f, 0.5f, 0.75f};
+    int pat = clamp(G.v[P_GATE], 0, 7), st;
+    float e = beat * 2.0f, u = e - fm_floorf(e), split = 0.5f + 0.25f * clamp01(gn[P_SWING]), ph;
+    static int last_st = -1;
+    if (!pat) {
+        gate_tgt = 1.0f;
+        GV.gate_open = 1;
+        return;
+    }
+    if (u < split) {
+        st = ((int)fm_floorf(e) * 2) & 15;
+        ph = u / split;
+    } else {
+        st = ((int)fm_floorf(e) * 2 + 1) & 15;
+        ph = (u - split) / (1.0f - split);
+    }
+    if (st != last_st) {
+        last_st = st;
+        gate_rnd = g_rand();
+    }
+    {
+        int on = pat == 7 ? (int)(gate_rnd & 1u) : (int)(PAT[pat] >> st & 1u);
+        gate_tgt = on && ph < LEN[pat] ? 1.0f : 0.0f;
+    }
+    GV.gate_step = (uint8_t)st;
+    GV.gate_open = gate_tgt > 0.5f;
+}
+
+/* the resonators' and the ring's pitch: the newest note */
+static float note_hz(void)
+{
+    const voice_t *v = &V[newest];
+    float semis = v->slice_on ? (float)(48 + clamp(G.v[P_TONIC], 0, 11)) - 69.0f : v->pitch + 60.0f - 69.0f;
+    semis += 12.0f * (float)GP.octave + pval(P_PITCH, gn[P_PITCH]);
+    return 440.0f * semis_ratio(semis);
+}
+
 /* ============================================================================================ effects ====== */
 static inline float softclip(float x)                     /* clean below 0.7, then a knee to 1 */
 {
@@ -1119,6 +1332,29 @@ static void fx_chunk(float *l, float *r, uint32_t n, float tempo)
     float dtgt, tcoef, rg[RV_N], dcoef;
     uint32_t rl[RV_N], k;
     int di = clamp(G.v[P_DTIME], 0, 12);
+    float fold = clamp01(gn[P_FOLD]), ring = clamp01(gn[P_RING]), rinc = 0.0f, reso = clamp01(gn[P_RESO]);
+    float shim = clamp01(gn[P_SHIM]), inf = clamp01(gn[P_INFINI]), rs_fb = 0.9f + 0.095f * reso, rs_t[RS_K];
+    float sh_r0 = 2.0f, sh_r1 = 0.0f;
+    int sh_iv = clamp(G.v[P_SHINT], 0, 3);
+    if (ring > 0.005f)
+        rinc = note_hz() * 1.4142f / (float)G_SR;      /* a little off the note: metal */
+    if (reso > 0.005f) {                              /* the chord: the note, its fifth, the scale's third above */
+        float f0 = note_hz(), fmin = (float)G_SR / (float)(RS_N - 4u);
+        int nt = V[newest].note, third = scale_snap(nt + 16, G.v[P_SCALE], G.v[P_TONIC]) - nt;
+        while (f0 < fmin)
+            f0 *= 2.0f;
+        while (f0 > 1500.0f)
+            f0 *= 0.5f;
+        rs_t[0] = (float)G_SR / f0;
+        rs_t[1] = (float)G_SR / (f0 * 1.4983f);
+        rs_t[2] = (float)G_SR / (f0 * semis_ratio((float)third));
+    }
+    switch (sh_iv) {
+    case 1: sh_r0 = 1.4983f; break;
+    case 2: sh_r1 = 1.4983f; break;
+    case 3: sh_r0 = 0.5f; break;
+    default: break;
+    }
     if (GP.pads & 1u << PAD_ECHO) {
         dmix = fm_maxf(dmix, 0.75f);
         dfb = fm_maxf(dfb, 0.82f);
@@ -1131,10 +1367,29 @@ static void fx_chunk(float *l, float *r, uint32_t n, float tempo)
         float len = (float)RV_MAX[k] * (0.28f + 0.72f * rsize);
         rl[k] = (uint32_t)len;
         rg[k] = rt > 30.0f ? 0.9995f : fm_exp2f(-3.3219f * 3.0f * len / (rt * (float)G_SR));   /* 10^(-3 len / RT60) */
+        rg[k] += (0.9997f - rg[k]) * inf;              /* INFINI: the space keeps what it has */
     }
+    dcoef += (0.92f - dcoef) * inf;
     for (i = 0; i < n; i++) {
         float xl = l[i], xr = r[i], dl, dr, wl, wr, rin, y[RV_N], h[RV_N], ol, orr;
         uint32_t rp, j;
+        /* the chopper's gate, the fold, the ring */
+        gate_env += (gate_tgt - gate_env) * 0.03f;
+        xl *= gate_env;
+        xr *= gate_env;
+        if (fold > 0.005f) {
+            float gfo = 1.0f + 7.0f * fold, w = fm_minf(1.0f, fold * 3.0f);
+            xl += (0.8f * fm_sin_turns(xl * gfo * 0.25f) - xl) * w;
+            xr += (0.8f * fm_sin_turns(xr * gfo * 0.25f) - xr) * w;
+        }
+        if (rinc > 0.0f) {
+            float c = fm_sin_turns(ring_ph), m = 1.0f - ring + ring * 1.6f * c;
+            ring_ph += rinc;
+            if (ring_ph >= 1.0f)
+                ring_ph -= 1.0f;
+            xl *= m;
+            xr *= m;
+        }
         /* matter: bits and sample-and-hold */
         if (down > 1.01f) {
             crush_cnt += 1.0f;
@@ -1150,6 +1405,32 @@ static void fx_chunk(float *l, float *r, uint32_t n, float tempo)
             float q = fm_exp2f(15.0f - 13.5f * bits);
             xl = fm_floorf(xl * q + 0.5f) / q;
             xr = fm_floorf(xr * q + 0.5f) / q;
+        }
+        /* the tuned resonators: three combs on the chord */
+        if (reso > 0.005f) {
+            float in = 0.5f * (xl + xr) * 0.2f, o[RS_K];
+            for (j = 0; j < (uint32_t)RS_K; j++) {
+                float rpf, fr2, y;
+                int32_t ri2;
+                uint32_t a0, a1;
+                rs_d[j] += (rs_t[j] - rs_d[j]) * 0.002f;
+                rpf = (float)rs_w - rs_d[j];
+                if (rpf < 0.0f)
+                    rpf += (float)RS_N;
+                ri2 = (int32_t)rpf;
+                fr2 = rpf - (float)ri2;
+                a0 = (uint32_t)ri2 % RS_N;
+                a1 = (a0 + 1u) % RS_N;
+                y = ((float)rs_buf[j][a0] + ((float)rs_buf[j][a1] - (float)rs_buf[j][a0]) * fr2) * (1.0f / 16384.0f);
+                rs_lp[j] += (y - rs_lp[j]) * 0.55f;
+                rs_lp[j] = fm_flush(rs_lp[j]);
+                o[j] = rs_lp[j];
+                rs_buf[j][rs_w] = (int16_t)(fm_clampf(in + rs_fb * rs_lp[j], -1.9f, 1.9f) * 16384.0f);
+            }
+            if (++rs_w >= RS_N)
+                rs_w = 0;
+            xl += reso * 0.9f * (o[0] + 0.8f * o[1] + 0.4f * o[2]);
+            xr += reso * 0.9f * (o[0] + 0.4f * o[1] + 0.8f * o[2]);
         }
         /* the echo, ping-pong, its time gliding like tape */
         dly_cur += (dtgt - dly_cur) * 0.0004f;
@@ -1175,7 +1456,7 @@ static void fx_chunk(float *l, float *r, uint32_t n, float tempo)
         if (++dly_w >= DLY_LEN)
             dly_w = 0;
         /* the reverb: diffusion, then a feedback delay network of four */
-        rin = 0.5f * (xl + xr) + 0.4f * (dl + dr) * dmix;
+        rin = (0.5f * (xl + xr) + 0.4f * (dl + dr) * dmix) * (1.0f - inf) + shim * 0.85f * sh_y;
         for (j = 0; j < 2u; j++) {
             float *b = AP[j], bo = b[ap_w[j]], v = rin + 0.6f * bo;
             b[ap_w[j]] = v;
@@ -1212,6 +1493,45 @@ static void fx_chunk(float *l, float *r, uint32_t n, float tempo)
             if (++ap_w[j] >= AP_LEN[j])
                 ap_w[j] = 0;
         }
+        /* the shimmer: the space's sound, a pitch up (two taps, crossfaded), back into it */
+        if (shim > 0.005f) {
+            float acc = 0.0f;
+            uint32_t q;
+            sh_buf[sh_w] = (int16_t)(fm_clampf(0.5f * (ol + orr), -1.9f, 1.9f) * 16384.0f);
+            for (q = 0; q < 2u; q++) {
+                float r_ = q ? sh_r1 : sh_r0, d0, t;
+                uint32_t tap;
+                if (r_ <= 0.0f)
+                    continue;
+                sh_d[q] += 1.0f - r_;
+                if (sh_d[q] < 0.0f)
+                    sh_d[q] += 1024.0f;
+                else if (sh_d[q] >= 1024.0f)
+                    sh_d[q] -= 1024.0f;
+                for (tap = 0; tap < 2u; tap++) {
+                    float dd = sh_d[q] + (tap ? 512.0f : 0.0f), pf, fr3;
+                    int32_t pi;
+                    uint32_t b0, b1;
+                    if (dd >= 1024.0f)
+                        dd -= 1024.0f;
+                    t = dd * (1.0f / 1024.0f);
+                    d0 = 1.0f - fm_fabsf(2.0f * t - 1.0f);       /* silent where the tap jumps */
+                    pf = (float)sh_w - dd - 2.0f;
+                    if (pf < 0.0f)
+                        pf += (float)SH_N;
+                    pi = (int32_t)pf;
+                    fr3 = pf - (float)pi;
+                    b0 = (uint32_t)pi % SH_N;
+                    b1 = (b0 + 1u) % SH_N;
+                    acc += d0 * ((float)sh_buf[b0] + ((float)sh_buf[b1] - (float)sh_buf[b0]) * fr3) * (1.0f / 16384.0f);
+                }
+            }
+            sh_y = fm_flush(acc * (sh_r1 > 0.0f ? 0.5f : 1.0f));
+            if (++sh_w >= SH_N)
+                sh_w = 0;
+        } else {
+            sh_y = 0.0f;
+        }
         xl = xl + dl * dmix + ol * rmix * 0.7f;
         xr = xr + dr * dmix + orr * rmix * 0.7f;
         {
@@ -1229,6 +1549,11 @@ static void capture_chunk(const float *l, const float *r, uint32_t n)
     if (!cap_on)
         return;
     for (i = 0; i < n; i++) {
+        if (cap_wait) {                                  /* SEUIL: it starts with the first sound */
+            if (fm_fabsf(l[i]) + fm_fabsf(r[i]) < 0.04f)
+                continue;
+            cap_wait = 0;
+        }
         cap_acc += 0.5f * (l[i] + r[i]);
         if (++cap_acc_n >= 2u) {
             float v = fm_clampf(cap_acc * 0.5f, -1.0f, 1.0f);
@@ -1294,6 +1619,10 @@ static void view_update(void)
     GV.lfo[1] = lfo[1].val;
     GV.beat_q16 = (uint32_t)(((float)beat_n + beat_ph) * 65536.0f);
     GV.cap_on = cap_on;
+    GV.cap_wait = cap_wait;
+    GV.morph = morph_now;
+    GV.chop = (uint8_t)chop_mode;
+    GV.tape = tape;
     GV.cap_len = G_SRC[G_SRC_CAPT].len;
     GV.seq++;
 }
@@ -1322,6 +1651,9 @@ void eng_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             win_make(wm, sk);
         }
         arp_tick(clock_beat, bps);
+        chop_tick(clock_beat);
+        gate_tick(clock_beat);
+        rain_tick(c);
         for (j = 0; j < G_MAXV; j++)
             for (i = 0; i < c; i++)
                 vbuf[j][0][i] = vbuf[j][1][i] = 0.0f;

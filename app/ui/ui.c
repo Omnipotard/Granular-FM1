@@ -125,6 +125,49 @@ static int lane_of(int p)
     return -1;
 }
 
+/* ------------------------------------------------------------------------------------------- scenes ---- */
+static int scene_p(int p)                        /* what a scene holds: the patch's sound, not the scene knobs */
+{
+    return !(PDEF[p].flags & (PF_GLOBAL | PF_ACTION)) && p != P_MORPH && p != P_AUTOM;
+}
+static void scene_take(int32_t det)
+{
+    int p;
+    if (det < 0 && G_SCENEB_OK) {                /* back: A and B change places */
+        for (p = 0; p < NP; p++)
+            if (scene_p(p)) {
+                int16_t t = G.v[p];
+                G.v[p] = G_SCENEB[p];
+                G_SCENEB[p] = t;
+            }
+        ui.dirty = 1;
+        toast(TR("SCENES", "SCENES"), TR("A <> B", "A <> B"), KNOB_RGB[1]);
+    } else {
+        for (p = 0; p < NP; p++)
+            G_SCENEB[p] = G.v[p];
+        G_SCENEB_OK = 1;
+        toast(TR("SCENE B", "SCENE B"), TR("PRISE: CHANGE A", "TAKEN: NOW EDIT A"), KNOB_RGB[1]);
+    }
+    ui.strip_dirty = ui.head_dirty = 1;
+}
+static void scene_mutate(int32_t det)
+{
+    float dose = (float)G.v[P_DOSE] * 0.01f * (det < 0 ? 0.5f : 1.0f);
+    int p;
+    if (!G_SCENEB_OK)
+        for (p = 0; p < NP; p++)
+            G_SCENEB[p] = G.v[p];
+    for (p = 0; p < NP; p++)
+        if (scene_p(p) && !(PDEF[p].flags & PF_ENUM) && p != P_SAMPLE && p != P_SRC2 && p != P_LEVEL) {
+            const pdef_t *d = &PDEF[p];
+            float dv = (g_randf() * 2.0f - 1.0f) * dose * (float)(d->max - d->min) * 0.5f;
+            G_SCENEB[p] = (int16_t)clamp(G_SCENEB[p] + (int32_t)dv, d->min, d->max);
+        }
+    G_SCENEB_OK = 1;
+    toast(TR("SCENE B", "SCENE B"), TR("MUTEE: TOURNE MORPH", "MUTATED: TURN MORPH"), KNOB_RGB[2]);
+    ui.strip_dirty = ui.head_dirty = 1;
+}
+
 static void param_turn(int p, int32_t det, uint32_t dt)
 {
     const pdef_t *d = &PDEF[p];
@@ -133,6 +176,10 @@ static void param_turn(int p, int32_t det, uint32_t dt)
     if (d->flags & PF_ACTION) {
         if (p == P_DICE)
             dice_roll(det);
+        else if (p == P_TAKEB)
+            scene_take(det);
+        else if (p == P_MUTB)
+            scene_mutate(det);
         return;
     }
     nv = clamp(old + param_step(p, det, dt), d->min, d->max);
@@ -150,6 +197,8 @@ static void param_turn(int p, int32_t det, uint32_t dt)
     toast_param(p);
     if (p == P_LANG || p == P_SAMPLE)
         ui.head_dirty = 1;
+    if (p == P_LATCH && nv == 0)
+        eng_event(EV_ALL_OFF, 0, 0);                 /* TENUE off: the keys held let go */
 }
 
 /* ----------------------------------------------------------------------------------------- modulation --- */

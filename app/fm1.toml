@@ -16,6 +16,6 @@ credits = "Built on fm1-base (MPL-2.0) and felucca-bsp, from Felucca by Leo Kuro
 author = "GRAINE contributors"
 description = "GRAINE turns the M-VAVE FM-1 into a granular sampler: eight synthesized sources and your own captures, read by up to 64 grains in six voices. Four coloured knobs on every page, modulation by gesture (hold LFO or ENV, turn a knob), the TAPIS keyboard of positions and performance pads, recorded knob gestures, capture and resampling of the output, a filter, an echo, a reverb and a dice."
 tags = ["synth", "sampler", "ambient", "experimental"]
-install = ""
+install = "https://github.com/Omnipotard/Granular-FM1/releases/latest"   # the page that installs it
 site = ""
 screenshot = "docs/img/screen-cloud.png"

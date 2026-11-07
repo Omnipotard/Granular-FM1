@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRAINE: GRAINE : le manuel</title>
+<meta name="description" content="GRAINE : le manuel for GRAINE, a firmware for the M-VAVE FM-1.">
+<style>
+/* paper and ink: warm white paper, ink-blue type, vermilion for what is played, mustard for asides; a shade of the
+   paper for code and callouts (CTL-1's; a firmware may restyle its site) */
+:root {
+  --paper: #fbf8f1; --sheet: #efe9dc; --rule: #ddd4c2; --ink: #1e2b5a; --muted: #5d6585;
+  --hot: #e5482e; --hot-t: #f8d3c9; --cool: #d9a21b; --cool-t: #f5e4b8;
+  --hot-ink: #c23a22;                                 /* the vermilion as text: 4.5:1 on the paper */
+  color-scheme: light;
+}
+body {
+  background: var(--paper); color: var(--ink); margin: 0;
+  font: 400 17px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding-inline: 16px; padding-block: 32px 64px;
+}
+main { max-width: 46rem; margin: 0 auto; }
+.page > .site { max-width: 46rem; margin-inline: auto; }
+main:focus { outline: none; }
+h1, h2, h3 { font-family: inherit; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 2.2rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: .02em; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 3rem 0 .8rem; padding-top: .8rem; border-top: 2px solid var(--ink); }
+h2 .num { color: var(--hot); margin-right: .5em; font-variant-numeric: tabular-nums; }
+h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 .5rem; }
+p, li { max-width: 65ch; }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+li { margin: .2rem 0; }
+li::marker { color: var(--hot); }
+strong { font-weight: 700; }
+a { color: var(--ink); text-decoration-color: var(--hot); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { background: var(--hot-t); }
+:focus-visible { outline: 3px solid var(--hot-ink); outline-offset: 2px; }
+.skip { position: absolute; left: 16px; top: -100px; background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 0 0 6px 6px; z-index: 1; }
+.skip:focus { top: 0; }
+code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .86em; }
+code { background: var(--sheet); padding: .08em .35em; border-radius: 3px; }
+pre { background: var(--sheet); border-radius: 6px; padding: 14px 16px; overflow-x: auto; line-height: 1.45; margin: 0 0 1.2rem; }
+pre code { background: none; padding: 0; font-size: inherit; }
+hr { display: none; }
+.table { overflow-x: auto; margin: 0 0 1.3rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: .45rem .7rem .45rem 0; border-bottom: 1px solid var(--rule); }
+th { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
+td:first-child { white-space: nowrap; }
+.lede { margin-bottom: 1.6rem; }
+.status { background: var(--sheet); border-radius: 6px; padding: 12px 16px; }
+.status p { margin: 0; }
+.site { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.2rem; margin: 0 0 1.6rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+.site .home { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; color: var(--ink); text-decoration: none; }
+.site .home:hover { color: var(--hot-ink); background: none; }
+.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: .2rem 1rem; font-size: .92rem; }
+.site nav a { color: var(--ink); text-underline-offset: 3px; }
+.site nav a[aria-current] { text-decoration: none; color: var(--hot-ink); }
+a.home { color: inherit; text-decoration: none; }
+a.home:hover { background: none; color: var(--hot-ink); }
+main > a.home { display: inline-block; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }
+.callout { border-left: 4px solid var(--cool); background: var(--cool-t); padding: 10px 16px; margin: 0 0 1.2rem; max-width: 65ch; border-radius: 0 6px 6px 0; }
+.callout p { margin: 0; }
+details { background: var(--sheet); border-radius: 6px; padding: 0 16px; margin: 0 0 1.2rem; }
+details > summary { cursor: pointer; padding: 10px 0; }
+details[open] > summary { margin-bottom: .4rem; }
+details > :last-child { margin-bottom: 1rem; }
+.swatch { display: inline-block; width: .7em; height: .7em; margin-right: .4em; vertical-align: .02em; }
+nav.contents ol { columns: 2 14rem; column-gap: 2rem; padding-left: 1.3rem; }
+.figs { display: flex; flex-wrap: wrap; gap: 20px; margin: .4rem 0 1.6rem; }
+figure { margin: 0; flex: 0 1 auto; }
+figure img { display: block; max-width: 100%; height: auto; }
+figure.shot img { width: 300px; image-rendering: pixelated; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); }
+figure.wide { flex-basis: 100%; }
+figure.wide img { width: 100%; }
+figcaption { color: var(--muted); font-size: .88rem; margin-top: .4rem; max-width: 300px; }
+figure.wide figcaption { max-width: none; }
+nav.contents li { break-inside: avoid; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="page">
+<main id="content" tabindex="-1">
+<a class="home" href="../">GRAINE</a>
+<h1>GRAINE : le manuel</h1>
+<p>GRAINE transforme le <strong>M-VAVE FM-1</strong> en synthé granulaire. Treize sources (huit sons, cinq qui évoluent), ta propre capture et quatre emplacements pour tes sons sont lus par jusqu'à <strong>128 grains</strong> répartis sur <strong>6 voix</strong>, calculés par les <strong>deux cœurs</strong> du FM-1. L'écran montre ce que tu entends : chaque grain est une graine lumineuse posée là où il lit le son.</p>
+<div class="figs"><figure class="shot"><img src="img/page-cloud.png" alt="Le nuage : la forme d&#x27;onde, les grains, les quatre knobs" loading="lazy"><figcaption>Le nuage : la forme d'onde, les grains, les quatre knobs</figcaption></figure></div>
+<h2 id="installer">Installer</h2>
+<ol><li>Ouvre la page <strong>Installer</strong> du site dans Chrome ou Edge (elle passe par le Web MIDI).</li><li>Branche le FM-1 avec un câble USB de données et suis la page : elle écrit GRAINE à la place du firmware d'origine. Pour revenir au firmware de M-VAVE, utilise leur outil de mise à jour.</li><li>GRAINE démarre sur le son BRUME. Joue les touches.</li></ol>
+<p>Sans navigateur : <code>python3 base/tools/fm1_install.py graine-X.Y.fwsc</code> depuis le dépôt de GRAINE.</p>
+<h2 id="le-principe-trois-gestes">Le principe : trois gestes</h2>
+<ol><li><strong>Tourner</strong> : quatre knobs, toujours les mêmes couleurs (ambre, rose, turquoise, lilas) sur toutes les pages. Le dessin au-dessus du nuage montre ce qu'ils font, dans leurs couleurs.</li><li><strong>Maintenir une source, tourner une destination</strong> : maintiens <code>LFO</code> ou <code>ENV</code> et tourne un knob, il est modulé. Maintiens <code>REC</code> et tourne un knob, ton geste est enregistré et tourne en boucle sur l'horloge.</li><li><strong>Jouer</strong> : le clavier en notes, ou en TAPIS (16 endroits du son et 11 pads de performance).</li></ol>
+<div class="figs"><figure class="shot"><img src="img/screen-mod.png" alt="Moduler : LFO maintenu, un knob tourné" loading="lazy"><figcaption>Moduler : LFO maintenu, un knob tourné</figcaption></figure></div>
+<h2 id="le-panneau">Le panneau</h2>
+<div class="table" tabindex="0" role="region" aria-label="Table: Le panneau (Commande, Tap, Maintien / combinaison)"><table><thead><tr><th>Commande</th><th>Tap</th><th>Maintien / combinaison</th></tr></thead><tbody><tr><td><code>HOME</code></td><td>NUAGE, JEU, SCÈNES</td><td>maintenu : <strong>GEL</strong> (le balayage s'arrête)</td></tr><tr><td><code>SEL</code></td><td>SOURCE, BALAYAGE</td><td></td></tr><tr><td><code>EDIT</code></td><td>GRAIN, TEXTURE, DRONE, CHAOS</td><td></td></tr><tr><td><code>ENV</code></td><td>AMPLI, ENV MOD</td><td>maintenu + knob : modulation par l'enveloppe (<code>OCT−/+</code> : vélocité, pression, aléa, molette)</td></tr><tr><td><code>LFO</code></td><td>LFO 1, LFO 2</td><td>maintenu + knob : modulation par le LFO (<code>OCT−/+</code> : LFO 1 ↔ LFO 2)</td></tr><tr><td><code>FX</code></td><td>FILTRE, ÉCHO, ESPACE, HALO, MATIÈRE, HACHOIR</td><td></td></tr><tr><td><code>ARP</code></td><td>ARPÈGE, PLUIE</td><td></td></tr><tr><td><code>GLO</code></td><td>GLOBAL, HORLOGE, HASARD</td><td></td></tr><tr><td><code>SEQ</code></td><td>TAPIS on/off</td><td>maintenu : TAPIS le temps du maintien</td></tr><tr><td><code>PLAY</code></td><td>l'horloge (gestes, arpège, hachoir, masque)</td><td></td></tr><tr><td><code>REC</code></td><td><strong>capture</strong> de la sortie (devient la source CAPTURE)</td><td>maintenu + knob : <strong>geste</strong> ; <code>REC</code>+<code>OCT−</code> efface les gestes ; <code>REC</code>+<code>SAVE</code> garde la capture (U1–U4)</td></tr><tr><td><code>SAVE</code></td><td>sauver le son (<code>PRESETS</code> choisit l'emplacement 1–24, <code>OCT+</code> oui, <code>OCT−</code> non)</td><td></td></tr><tr><td><code>OCT−</code> / <code>OCT+</code></td><td>octave −3…+3</td><td>les deux : octave 0</td></tr><tr><td><code>SELECT</code></td><td>la source (les emplacements vides sont sautés)</td><td></td></tr><tr><td><code>PRESETS</code></td><td>les 24 sons (un son modifié demande un second cran)</td><td></td></tr><tr><td><code>ALGORITHM</code></td><td>vitesse de lecture, de ×−4 à ×4 ; <strong>0 fige</strong>, ×1 = temps réel</td><td></td></tr><tr><td><code>KNOB 1–4</code></td><td>les quatre réglages de la page</td><td></td></tr></tbody></table></div>
+<h2 id="les-pages">Les pages</h2>
+<p>Chaque page a ses quatre knobs, et son dessin en surimpression sur le nuage.</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: Les pages (Bouton, Page, Knob 1 (ambre), Knob 2 (rose), Knob 3 (turquoise), Knob 4 (lilas))"><table><thead><tr><th>Bouton</th><th>Page</th><th>Knob 1 (ambre)</th><th>Knob 2 (rose)</th><th>Knob 3 (turquoise)</th><th>Knob 4 (lilas)</th></tr></thead><tbody><tr><td>HOME</td><td>NUAGE</td><td>position</td><td>taille du grain (5 ms–2 s)</td><td>densité (0,5–150 grains/s, ou division)</td><td>flou de position</td></tr><tr><td>HOME</td><td>JEU</td><td>hauteur ±24</td><td>essaim (écart de hauteur)</td><td>grains à l'envers</td><td>écart stéréo</td></tr><tr><td>HOME</td><td>SCÈNES</td><td><strong>morph</strong> A → B</td><td><strong>prendre B</strong> (à rebours : échange A et B)</td><td><strong>muter B</strong> (dose de HASARD)</td><td>morph <strong>auto</strong> (2 s à 1 min)</td></tr><tr><td>SEL</td><td>SOURCE</td><td>source</td><td>début de fenêtre</td><td>longueur de fenêtre</td><td>accord fin</td></tr><tr><td>SEL</td><td>BALAYAGE</td><td>mode (boucle, aller-retour, une fois, ivre, sauts)</td><td>vitesse</td><td>départ à chaque note</td><td>note → position</td></tr><tr><td>EDIT</td><td>GRAIN</td><td>forme (gauss → hann → tukey → rect)</td><td>pente</td><td>quantification de l'essaim</td><td>rythme (régulier, aléatoire, synchro)</td></tr><tr><td>EDIT</td><td>TEXTURE</td><td>scintillement</td><td>éclat (grains à l'octave)</td><td>glisse dans le grain ±24</td><td>lissage de position</td></tr><tr><td>EDIT</td><td>DRONE</td><td><strong>étire</strong> les grains (×1–×8, jusqu'à 16 s)</td><td><strong>chœur</strong> (voix désaccordées et écartées)</td><td><strong>source B</strong></td><td><strong>mélange</strong> A → B (grain par grain)</td></tr><tr><td>EDIT</td><td>CHAOS</td><td><strong>chaos</strong> (grains fous)</td><td><strong>hache</strong> (bégaie, roll, frein, envol, mélange)</td><td>pas (1/4–1/32)</td><td>chance</td></tr><tr><td>ENV</td><td>AMPLI</td><td>attaque</td><td>déclin</td><td>tenue</td><td>relâche</td></tr><tr><td>ENV</td><td>ENV MOD</td><td>attaque</td><td>déclin</td><td>tenue</td><td>relâche</td></tr><tr><td>LFO</td><td>LFO 1 / 2</td><td>vitesse</td><td>forme (sinus… hasard, dérive)</td><td>sync (libre, tempo, <strong>lent</strong> ÷20)</td><td>départ (libre, à la note)</td></tr><tr><td>FX</td><td>FILTRE</td><td>type (PB → bande → PH)</td><td>coupure</td><td>résonance</td><td>saturation</td></tr><tr><td>FX</td><td>ÉCHO</td><td>temps (1/32 à 1/4.)</td><td>réinjection (jusqu'à l'auto-oscillation)</td><td>teinte</td><td>dose</td></tr><tr><td>FX</td><td>ESPACE</td><td>taille</td><td>durée (jusqu'à infini)</td><td>amorti</td><td>dose</td></tr><tr><td>FX</td><td>HALO</td><td><strong>shimmer</strong></td><td>intervalle (octave, quinte, octave+quinte, octave basse)</td><td><strong>résonateurs</strong> accordés</td><td><strong>infini</strong> (l'espace figé)</td></tr><tr><td>FX</td><td>MATIÈRE</td><td>bits</td><td>rabot (sous-échantillonnage)</td><td>largeur stéréo</td><td>volume du son</td></tr><tr><td>FX</td><td>HACHOIR</td><td><strong>masque</strong> rythmique (7 motifs de 16 pas)</td><td>swing</td><td><strong>anneau</strong></td><td><strong>pliage</strong></td></tr><tr><td>ARP</td><td>ARPÈGE</td><td>mode</td><td>pas</td><td>octaves</td><td>durée</td></tr><tr><td>ARP</td><td>PLUIE</td><td><strong>pluie</strong> (notes qui tombent seules)</td><td>étendue (octaves)</td><td>durée des gouttes</td><td><strong>tenue</strong> (touches qui restent)</td></tr><tr><td>GLO</td><td>GLOBAL</td><td>voix (1 = mono legato)</td><td>portamento</td><td>gamme</td><td>tonique</td></tr><tr><td>GLO</td><td>HORLOGE</td><td>tempo</td><td>vélocité</td><td>capture (une fois, boucle, <strong>seuil</strong>)</td><td>longueur des gestes</td></tr><tr><td>GLO</td><td>HASARD</td><td><strong>lancer</strong> (chaque cran mute le son ; à rebours : annule)</td><td>dose</td><td>cible</td><td>langue FR/EN</td></tr></tbody></table></div>
+<h3 id="les-dessins">Les dessins</h3>
+<div class="table" tabindex="0" role="region" aria-label="Table: Les dessins (, )"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>!<a href="img/page-env.png">AMPLI : la courbe d'enveloppe</a></td><td>!<a href="img/page-lfo.png">LFO : la forme d'onde et sa valeur</a></td></tr><tr><td>!<a href="img/page-filter.png">FILTRE : la réponse en fréquence</a></td><td>!<a href="img/page-halo.png">HALO : shimmer et résonateurs</a></td></tr></tbody></table></div>
+<h3 id="pour-planer-drone-halo-sc-nes-pluie">Pour planer : DRONE, HALO, SCÈNES, PLUIE</h3>
+<ul><li><strong>ÉTIRE</strong> allonge chaque grain jusqu'à 8 fois (16 s au plus) : les grains se chevauchent en une nappe continue. Avec la vitesse de lecture (<code>ALGORITHM</code>) proche de 0, le son se fige en un accord qui respire.</li><li><strong>CHŒUR</strong> désaccorde chaque voix un peu et la place ailleurs dans la stéréo.</li><li><strong>SOURCE B</strong> et <strong>MÉLANGE</strong> : une part des grains lit une deuxième source, au même endroit. Module MÉLANGE par un LFO lent et le son passe d'une matière à l'autre.</li><li><strong>SHIMMER</strong> renvoie l'espace transposé (une octave, une quinte, les deux, ou une octave plus bas) dans l'espace lui-même : le son monte sans fin. <strong>INFINI</strong> fige l'espace : ce qu'il contient tient, tu joues par-dessus.</li><li><strong>RÉSONATEURS</strong> : trois cordes accordées sur la note jouée, sa quinte et la tierce de la gamme (GLOBAL) font chanter n'importe quelle source dans la tonalité.</li><li><strong>SCÈNES</strong> : règle un son, tourne <strong>PRENDRE</strong> (il devient la scène B), change les knobs (c'est la scène A), puis <strong>MORPH</strong> passe de l'une à l'autre, tous les réglages à la fois. <strong>AUTO</strong> le fait tout seul, très lentement si tu veux. <strong>MUTER</strong> fabrique une scène B au hasard autour de la tienne.</li><li><strong>PLUIE</strong> fait tomber des notes de la gamme toutes seules : un générateur d'ambiance sans les mains. <strong>TENUE</strong> garde les touches enfoncées : un accord tenu, puis un second appui le relâche.</li><li><strong>LFO lent</strong> (SYNC = LENT) : des cycles de plusieurs minutes.</li></ul>
+<div class="figs"><figure class="shot"><img src="img/page-scenes.png" alt="SCÈNES : le morph de A vers B, chaque réglage entre les deux" loading="lazy"><figcaption>SCÈNES : le morph de A vers B, chaque réglage entre les deux</figcaption></figure></div>
+<h3 id="pour-piquer-chaos-hachoir">Pour piquer : CHAOS, HACHOIR</h3>
+<ul><li><strong>CHAOS</strong> : de temps en temps, un grain n'en fait qu'à sa tête : à l'envers, une octave plus haut ou plus bas, réduit à un clic, ailleurs dans le son, glissant de deux octaves, ou absent.</li><li><strong>HACHE</strong> : à chaque pas de l'horloge (<code>PAS</code>), selon la <strong>CHANCE</strong>, le son bégaie, roule (des répétitions de plus en plus serrées), freine comme une bande qui s'arrête ou s'envole d'une octave. MÉLANGE tire au sort. <code>PLAY</code> lance l'horloge interne ; sans elle, une horloge libre tourne quand même.</li><li><strong>MASQUE</strong> : sept rythmes de 16 pas (croches, syncope, tresillo, galop, haché, pulsation, aléatoire) ouvrent et ferment le son, avec du <strong>SWING</strong>. L'écho et l'espace continuent derrière.</li><li><strong>ANNEAU</strong> module le son par une sinusoïde un peu à côté de la note : du métal. <strong>PLIAGE</strong> replie l'onde.</li></ul>
+<div class="figs"><figure class="shot"><img src="img/page-chopper.png" alt="HACHOIR : le masque, l&#x27;anneau et le pliage" loading="lazy"><figcaption>HACHOIR : le masque, l'anneau et le pliage</figcaption></figure></div>
+<h2 id="le-tapis">Le TAPIS</h2>
+<p><code>SEQ</code> transforme le clavier. Les <strong>16 touches blanches</strong> sont 16 endroits de la fenêtre : avec <code>ALGORITHM</code> à ×1 c'est un découpeur d'échantillon, à 0 un nuage figé à cet endroit. Les <strong>11 touches noires</strong> sont des pads, actifs tant qu'on les tient : gel · envers · −1 octave · +1 octave · quinte · nuée (densité ×4) · poussière (grains ÷4) · bégaie · dérive · sombre · écho.</p>
+<div class="figs"><figure class="shot"><img src="img/page-tapis.png" alt="Le TAPIS" loading="lazy"><figcaption>Le TAPIS</figcaption></figure></div>
+<h2 id="les-sources">Les sources</h2>
+<p>Toutes <strong>synthétisées</strong> par <code>tools/gen_sounds.py</code> : aucun échantillon enregistré, aucun droit tiers.</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: Les sources (, )"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>VOIX</td><td>un chœur qui glisse de voyelle en voyelle</td></tr><tr><td>VERRE, CORDE, SOUFFLE, TAMBOUR, ORGUE, PLUIE, SPECTRE</td><td>verre frotté, cordes pincées, souffle, peaux, orgue, gouttes, drone FM</td></tr><tr><td><strong>ARPÈGE</strong></td><td>un arpège qui traverse La m – Fa – Do – Sol, son filtre qui s'ouvre</td></tr><tr><td><strong>BASSE</strong></td><td>une ligne de basse qui change et grogne de plus en plus</td></tr><tr><td><strong>ACCORDS</strong></td><td>Ré m9 – Si♭ maj7 – Fa maj7 – Do 6sus qui se fondent l'un dans l'autre</td></tr><tr><td><strong>NAPPE</strong></td><td>les harmoniques de La 1 qui entrent une à une</td></tr><tr><td><strong>SEQUENCE</strong></td><td>seize pas jamais pareils : bips FM, bruit, toms, glitch</td></tr><tr><td>CAPTURE</td><td>ce que tu as capturé avec <code>REC</code> (en mémoire vive, 2,97 s)</td></tr><tr><td>U1–U4</td><td>tes sons : captures gardées, ou sons importés (ci-dessous)</td></tr></tbody></table></div>
+<p>Les cinq sources qui évoluent sont faites pour être parcourues lentement : <code>ALGORITHM</code> vers ×0,1, et l'arpège, la basse ou les accords avancent sur des dizaines de secondes.</p>
+<h2 id="les-sons-d-usine">Les sons d'usine</h2>
+<p>BRUME, CHORALE, VERRIÈRE, GIVRE, HARPE, ÉTIREMENT, SOUFFLE, MACHINE, GLITCH, ORGANUM, AVERSE, SPECTRE, TROU NOIR, POUSSIÈRE, ARPEGIO, RÉCOLTE, et sur les nouvelles sources et pages : <strong>MONTÉE</strong> (l'arpège qui monte dans le shimmer), <strong>GRAVE</strong> (la basse, filtre à l'enveloppe), <strong>BASILIQUE</strong> (les accords étirés en chœur dans un grand espace), <strong>AUBE</strong> (la nappe et ses résonateurs), <strong>ROUAGES</strong> (la séquence masquée et hachée), <strong>MIRAGE</strong> (accords et nappe mêlés par un LFO), <strong>ORAGE</strong> (chaos, pliage, hachoir) et <strong>SABLIER</strong> (l'arpège figé sous une pluie de notes). <code>SAVE</code> garde les tiens par-dessus, dans 24 emplacements.</p>
+<h2 id="tes-propres-sons">Tes propres sons</h2>
+<p>Quatre emplacements, <strong>U1 à U4</strong>, gardent tes sons dans la mémoire du FM-1, même éteint. Trois façons de les remplir :</p>
+<ol><li><strong>Capturer</strong> : <code>REC</code> enregistre ce que joue le FM-1 (CAPTURE), <code>REC</code>+<code>SAVE</code> le garde dans U1–U4. Avec la capture au <strong>SEUIL</strong> (HORLOGE), l'enregistrement attend le premier son.</li><li><strong>La page Importer</strong> du site (Chrome ou Edge) : dépose n'importe quel fichier audio (WAV, MP3, OGG, FLAC, M4A…), écoute ce qui sera envoyé, choisis l'emplacement, <strong>Envoyer</strong>. Le son part par le câble USB.</li><li><strong>Sans navigateur</strong>, depuis un terminal, dans le dépôt de GRAINE :</li></ol>
+<p>``<code>sh pip install mido python-rtmidi python3 tools/graine_import.py mon-son.wav --slot 1 python3 tools/graine_import.py --clear --slot 2 </code>``</p>
+<p>Un emplacement garde 65 504 octets : 2,9 s en qualité 22 kHz, 4 s à 16 kHz, 5,9 s à 11 kHz, 8,1 s à 8 kHz. En mode auto, la meilleure qualité qui tient est choisie. Le silence du début est coupé, le son normalisé. Le son du FM-1 s'arrête quelques secondes pendant l'écriture. Un envoi interrompu laisse l'emplacement vide, jamais un demi-son. Le son importé devient la source jouée.</p>
+<h2 id="midi">MIDI</h2>
+<p>Notes (vélocité), pitch bend ±2, molette (CC1, source de modulation), pression (canal et polyphonique), sustain (CC64), horloge et start/stop. CC 14–21 : les knobs de NUAGE et JEU ; CC 74 coupure, 71 résonance, 91 espace, 94 écho.</p>
+<h2 id="l-mulateur">L'émulateur</h2>
+<p>Le même code, compilé en WebAssembly, joue dans le navigateur (page <strong>Émulateur</strong> du site) : tous les réglages, un clavier MIDI, et tes sons déposés dans U1–U4.</p>
+<div class="figs"><figure class="shot"><img src="img/emulateur.png" alt="L&#x27;émulateur" loading="lazy"><figcaption>L'émulateur</figcaption></figure></div>
+<h2 id="sous-le-capot">Sous le capot</h2>
+<ul><li><strong>Deux cœurs</strong> : le second calcule la moitié des grains. S'il venait à défaillir, GRAINE continue sur un seul cœur avec 64 grains jusqu'à l'extinction, sans redémarrer.</li><li>Si le calcul déborde, GRAINE retire des grains un instant, puis les rend peu à peu.</li><li>Mémoire : les 13 sources (385 Ko) et le programme tiennent dans les 581 Ko du FM-1 ; la capture (128 Ko), l'écho, l'espace, le shimmer et les résonateurs dans sa mémoire vive.</li><li>Code libre (MIT), bâti sur fm1-base (MPL-2.0) et felucca-bsp (Felucca, Leo Kuroshita, Hügelton Instruments).</li></ul>
+</main>
+</div>
+</body>
+</html>

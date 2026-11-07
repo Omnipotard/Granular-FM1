@@ -508,13 +508,15 @@ static void vz_drone(void)
     for (i = 0; i < 9; i++) {
         float x0 = (float)i / 9.0f - len * 0.5f, px = 0.0f, py = 0.0f;
         rgb_t c = vz_rnd((uint32_t)i + 3u) < bl ? KNOB_RGB[3] : KNOB_RGB[0];
+        int have = 0;                                           /* (a point drawn before: a line from it) */
         for (x = 0; x <= 40; x++) {
             float t = (float)x / 40.0f, gx = (float)VX0 + (x0 + t * len) * (float)VW;
             float gy = mid + 8.0f - (0.5f - 0.5f * fm_sin_turns(t + 0.25f)) * (float)(VH / 2 - 6);
             if (gx < (float)VX0 || gx > (float)VX1)
                 continue;
-            if (x)
+            if (have)
                 d_line(px, py, gx, gy, c, 150);
+            have = 1;
             px = gx;
             py = gy;
         }

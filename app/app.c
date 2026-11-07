@@ -101,6 +101,11 @@ void app_usb_cmd(const uint8_t *d, uint32_t n)
 #ifdef PLAT_WEB
 /* the emulator page's own calls (app/web/emu): a sound dropped into a user slot of the data area, then chosen */
 __attribute((used, visibility("default"))) void graine_rescan(void) { slots_scan(); }
+__attribute((used, visibility("default"))) void graine_source(int i);
+__attribute((used, visibility("default"))) void graine_user(int slot)   /* user slot 0..3 chosen as the source */
+{
+    graine_source(G_SRC_CAPT + 1 + clamp(slot, 0, G_NUSER - 1));
+}
 __attribute((used, visibility("default"))) void graine_source(int i)
 {
     G.v[P_SAMPLE] = (int16_t)clamp(i, 0, G_NSRC - 1);

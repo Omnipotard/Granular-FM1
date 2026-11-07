@@ -32,7 +32,7 @@ fm1Part({
     area.set(new Uint8Array(m.body), off + 32);
     area.set(new Uint8Array(m.head), off);      // (the header last, as the firmware writes it)
     if (ex.graine_rescan) ex.graine_rescan();
-    if (ex.graine_source) ex.graine_source(9 + m.slot);
+    if (ex.graine_user) ex.graine_user(m.slot);          // (the user slot's source: app.c knows its number)
     fm1.part("graine", { ok: m.slot });
   },
 });

@@ -1,0 +1,444 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT
+     Copyright (C) 2026 GRAINE contributors
+     GRAINE's sound importer: a sound from this computer into one of the FM-1's user slots (U1..U4) over Web MIDI
+     (SysEx), the protocol of app/app.c app_usb_cmd and tools/graine_import.py: the command 0x47 (slot, rate, length,
+     CRC-32, name), then the FM-1 pulls the mu-law bytes with read requests and reports by reading 0xC0000000 (kept)
+     or 0xCF000000 | code. tools/site.py fills in NAME, ID (fm1.toml id_prefix) and PORTS_JS (fm1-base's
+     web/fm1ports.js). The part between the "import protocol" markers is what tests/importer_page_test.mjs runs
+     against a simulated FM-1. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Importer des sons · {{NAME}}</title>
+<meta name="description" content="Envoie tes propres sons dans un FM-1 qui joue {{NAME}} : WAV, MP3, OGG, FLAC… dans U1 à U4. Chrome ou Edge.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+<style>
+:root { --ground: #faf4e8; --ink: #48392f; --muted: #725f4c; --rule: #e6dccb; --accent: #e0683a; --teal: #1f8a80; --card: #fffaf1;
+        --accent-ink: #b4481c; --on-accent: #2a140a; --wave: #1f8a80; color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ground: #1c1814; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a; --teal: #4cc3b6; --card: #26201b;
+                                    --accent-ink: #f28a5a; --wave: #4cc3b6; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --ground: #1c1814; --ink: #f2e8d8; --muted: #b3a28e; --rule: #3a322a; --accent: #f28a5a; --teal: #4cc3b6; --card: #26201b;
+                           --accent-ink: #f28a5a; --wave: #4cc3b6; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); margin: 0; padding-inline: 16px; padding-block: 32px 64px;
+       font: 400 17px/1.55 "Barlow", "Helvetica Neue", Arial, sans-serif; }
+main { max-width: 40rem; margin: 0 auto; }
+h1 { font: 700 2.2rem/1.1 "Barlow Semi Condensed", "Barlow", sans-serif; margin: 0 0 .6rem; }
+h2 { font: 600 1.3rem/1.2 "Barlow Semi Condensed", "Barlow", sans-serif; margin: 0 0 .4rem; }
+p { margin: 0 0 .8rem; }
+a { color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.lede { color: var(--muted); margin-bottom: 1.4rem; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 1rem 1.1rem; margin: 0 0 1rem; }
+.card p { color: var(--muted); }
+button, label.pick { font: 600 1rem "Barlow", sans-serif; border-radius: 999px; padding: .45em 1.3em; cursor: pointer;
+                     border: 1px solid var(--accent); display: inline-block; }
+button.primary { background: var(--accent); color: var(--on-accent); }
+button.quiet, label.pick { background: var(--ground); color: var(--ink); border-color: var(--rule); }
+button:disabled { opacity: .35; cursor: default; }
+label.pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .6rem; }
+.status { border-left: 4px solid var(--teal); background: var(--card); border-radius: 0 10px 10px 0; padding: .7rem 1rem; margin: 0 0 1rem;
+          min-height: 3.1rem; }
+.status.err { border-left-color: var(--accent); }
+.status p { margin: 0; color: var(--ink); }
+progress { width: 100%; height: 6px; margin: .2rem 0 1rem; accent-color: var(--teal); }
+progress[hidden] { display: none; }
+canvas { width: 100%; height: 90px; display: block; background: var(--ground); border: 1px solid var(--rule); border-radius: 8px; }
+.drop { border: 1.5px dashed var(--rule); border-radius: 12px; padding: 1rem; text-align: center; color: var(--muted); }
+.drop.over { border-color: var(--teal); color: var(--ink); }
+.facts { font-variant-numeric: tabular-nums; color: var(--ink) !important; }
+select, input[type=text] { font: 400 1rem "Barlow", sans-serif; background: var(--ground); color: var(--ink); border: 1px solid var(--rule);
+                           border-radius: 8px; padding: .35em .6em; }
+input[type=text] { width: 9.5em; text-transform: uppercase; }
+ul.small { color: var(--muted); font-size: .92rem; padding-left: 1.1rem; margin: 0; }
+code { font-size: .92em; }
+</style>
+</head>
+<body>
+<main>
+<p><a href="../">← {{NAME}}</a></p>
+<h1>Importer des sons</h1>
+<p class="lede">Envoie tes propres sons dans le FM-1 qui joue {{NAME}}, par le câble USB : ils vont dans les
+emplacements U1 à U4, restent après l'extinction, et deviennent des sources à granuler comme les autres. Cette page
+marche dans Chrome ou Edge.</p>
+
+<div class="status" id="statusBox"><p id="status" role="status">Choisis un son, puis branche le FM-1 avec un câble USB.</p></div>
+<progress id="bar" max="100" hidden></progress>
+
+<section class="card" aria-labelledby="h1s">
+  <h2 id="h1s">1. Le son</h2>
+  <div class="drop" id="drop">
+    <p>Dépose un fichier audio ici (WAV, MP3, OGG, FLAC, M4A…)</p>
+    <label class="pick">Choisir un fichier&hellip;<input type="file" id="file" accept="audio/*,.wav,.aif,.aiff,.mp3,.ogg,.flac,.m4a"></label>
+  </div>
+  <div id="prep" hidden>
+    <canvas id="wave" width="1200" height="180" aria-label="La forme d'onde du son tel qu'il sera envoyé"></canvas>
+    <p class="facts" id="facts"></p>
+    <div class="row">
+      <label for="quality">Qualité</label>
+      <select id="quality">
+        <option value="auto">auto (la meilleure qui tient)</option>
+        <option value="22050">22 kHz : 2,9 s au plus</option>
+        <option value="16000">16 kHz : 4,0 s</option>
+        <option value="11025">11 kHz : 5,9 s</option>
+        <option value="8000">8 kHz : 8,1 s</option>
+      </select>
+      <button id="listen" class="quiet" type="button">Écouter</button>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h2s">
+  <h2 id="h2s">2. Où le mettre</h2>
+  <div class="row">
+    <label for="slot">Emplacement</label>
+    <select id="slot"><option value="1">U1</option><option value="2">U2</option><option value="3">U3</option><option value="4">U4</option></select>
+    <label for="name">Nom</label>
+    <input type="text" id="name" maxlength="9" value="" placeholder="MON SON" autocomplete="off">
+  </div>
+  <div class="row">
+    <button id="send" class="primary" type="button" disabled>Envoyer au FM-1</button>
+    <button id="clear" class="quiet" type="button">Vider l'emplacement</button>
+  </div>
+</section>
+
+<ul class="small">
+  <li>Le FM-1 doit jouer {{NAME}} (pas son firmware d'origine) : <a href="../install/">installe-le d'abord</a>.</li>
+  <li>Le son s'arrête quelques secondes pendant l'écriture. Un envoi interrompu laisse l'emplacement vide, jamais un demi-son.</li>
+  <li>Le silence du début est coupé, le son est normalisé puis gardé en 8 bits µ-law, le format des sources de {{NAME}}.</li>
+  <li>Sans navigateur : <code>python3 tools/graine_import.py son.wav --slot 1</code> dans le dépôt de {{NAME}}.</li>
+</ul>
+</main>
+
+<script>
+"use strict";
+const FW = { name: "{{NAME}}", id: "{{ID}}" };
+// --- import protocol: begin (tools/graine_import.py, app/app.c app_usb_cmd; tested by tests/importer_page_test.mjs)
+const GI = (() => {
+  const HS_QUERY = [0xF0, 0x00, 0x32, 0x45, 0x00, 0x00, 0x00, 0x40, 0x7F, 0xF7];
+  const HS_FULL = [0xF0, 0x00, 0x32, 0x45, 0x08, 0x00, 0x00, 0x40, 0x00, 0x7E, 0x01, 0xF7];
+  const IMP_CMD = 0x47, SLOT_BYTES = 65504, RATES = [22050, 16000, 11025, 8000];
+  const OK_ADDR = 0xC0000000, FAIL_ADDR = 0xCF000000, MAXDATA = 512;
+  const NAME = FW.name, ID = FW.id;
+  const DELAY = { poll: 500, idle: 10000, first: 5000, hs: 1000, hsFull: 600 };
+  const ERRORS = { 1: "la demande (emplacement, longueur ou qualité)", 2: "le transfert (un morceau n'est pas arrivé)",
+                   7: "l'effacement de la mémoire", 8: "l'écriture de la mémoire", 22: "la vérification (un octet a changé en route)" };
+  function fail(code, msg) { const e = new Error(msg); e.code = code; return e; }
+  function pack7(data) {
+    const out = []; let acc = 0, nb = 0;
+    for (const b of data) { acc |= b << nb; nb += 8; while (nb >= 7) { out.push(acc & 0x7F); acc >>>= 7; nb -= 7; } }
+    if (nb) out.push(acc & 0x7F);
+    return out;
+  }
+  function unpack7(s) {
+    const out = []; let acc = 0, nb = 0;
+    for (const b of s) { acc |= (b & 0x7F) << nb; nb += 7; while (nb >= 8) { out.push(acc & 0xFF); acc >>>= 8; nb -= 8; } }
+    return out;
+  }
+  const CRC_T = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_T[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  const u32 = (b, o) => (b[o] | b[o + 1] << 8 | b[o + 2] << 16 | b[o + 3] << 24) >>> 0;
+  const le32 = (v) => [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF];
+  function frame(cmd, body) {
+    const n = body.length; let s = 0;
+    for (const b of body) s += b;
+    return [0xF0, ...pack7([0x00, 0x59, cmd, n & 0xFF, (n >> 8) & 0xFF, 0, ...body, ~s & 0xFF]), 0xF7];
+  }
+  function response(addr, data, fl = 0) {
+    const n = data.length;
+    const body = [0x00, 0x59, 0x30, (n + 8) & 0xFF, ((n + 8) >> 8) & 0xFF, 0, fl, ...le32(addr), n & 0xFF, (n >> 8) & 0xFF, 0, ...data];
+    let s = 0;
+    for (let i = 6; i < body.length; i++) s += body[i];
+    body.push(~s & 0xFF);
+    return [0xF0, ...pack7(body), 0xF7];
+  }
+  function parseRequest(pkt) {
+    if (pkt.length < 2 || pkt[0] !== 0xF0 || pkt[pkt.length - 1] !== 0xF7) return null;
+    const u = unpack7(pkt.slice(1, -1));
+    if (u.length !== 15 || u[0] !== 0 || u[1] !== 0x59 || u[2] !== 0x30) return null;
+    let s = 0;
+    for (let i = 6; i < 14; i++) s += u[i];
+    if ((~s & 0xFF) !== u[14]) return null;
+    return { fl: u[6], addr: u32(u, 7), len: u[11] | u[12] << 8 | u[13] << 16 };
+  }
+  function parseIdentity(pkt) {
+    if (pkt.length < 2 || pkt[0] !== 0xF0 || pkt[pkt.length - 1] !== 0xF7) return null;
+    const d = unpack7(pkt.slice(1, -1));
+    if (d.length !== 34 || d[0] !== 0 || d[1] !== 0x59 || d[2] !== 0x11) return null;
+    const z = d.indexOf(0, 6);
+    const txt = String.fromCharCode(...d.slice(6, z < 0 || z > 33 ? 33 : z));
+    return /^[^_]+_\d+$/.test(txt) ? txt : null;
+  }
+  async function ask(link, query, ms) {
+    if (!link.send(query)) return false;
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const p = await link.read(end - Date.now());
+      if (!p) break;
+      const id = parseIdentity(p);
+      if (id) return id;
+    }
+    return null;
+  }
+  async function handshake(link, tries = 2) {
+    link.drain();
+    for (let t = 0; t < tries; t++) {
+      const id = await ask(link, HS_QUERY, DELAY.hs);
+      if (id === false) return null;
+      if (id === null) continue;
+      if (/^ota-/i.test(id) || !/^[^_]+_\d{3}$/.test(id)) return id;
+      const full = await ask(link, HS_FULL, DELAY.hsFull);
+      return full && full.split("_")[0] === id.split("_")[0] && full.startsWith(id) ? full : id;
+    }
+    return null;
+  }
+
+  // GRAINE's mu-law (app/ui/store.c ulaw_enc): 0..255, 128 the middle
+  function ulaw(x) {
+    const a = Math.min(1, Math.abs(x)), y = Math.sign(x) * Math.log1p(255 * a) / Math.log(256);
+    return Math.max(0, Math.min(255, Math.round((y + 1) * 127.5)));
+  }
+  const unulaw = (q) => { const y = q / 127.5 - 1; return Math.sign(y) * Math.expm1(Math.abs(y) * Math.log1p(255)) / 255; };
+  // the rate that keeps the most of a sound of sec seconds (or the one asked)
+  const rateFor = (sec, want = "auto") => want === "auto" ? (RATES.find((r) => sec * r <= SLOT_BYTES) || RATES[RATES.length - 1]) : Number(want);
+  // samples at their rate (already resampled, mono) -> mu-law bytes: the silence before cut, normalized, faded
+  function encode(x) {
+    let s = 0;
+    while (s < x.length && Math.abs(x[s]) < 0.003) s++;
+    const n = Math.min(SLOT_BYTES, x.length - s);
+    if (n < 64) throw fail("short", "Ce son est trop court, ou silencieux.");
+    let peak = 0;
+    for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(x[s + i]));
+    const g = peak > 0 ? 0.95 / peak : 1, fi = Math.min(64, n >> 2), fo = Math.min(256, n >> 2), q = new Uint8Array(n);
+    for (let i = 0; i < n; i++) q[i] = ulaw(x[s + i] * g * Math.min(1, i / fi, (n - i) / fo));
+    return q;
+  }
+  const nameBytes = (s) => {
+    const t = (s || "").normalize("NFD").toUpperCase().replace(/[^A-Z0-9 _-]/g, "").slice(0, 9) || "SON";
+    return [...t].map((c) => c.charCodeAt(0)).concat(Array(10 - t.length).fill(0));
+  };
+
+  // the FM-1 found (fm1ports.js); a Link from makeLink(input, output)
+  {{PORTS_JS}}
+  const NAME_RE = new RegExp(NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const USUAL = PORT_NAMES.filter((n) => n !== "ota");
+  const BLUETOOTH_RE = /bluetooth/i;
+  const askable = (name) => !BLUETOOTH_RE.test(name || "") && (NAME_RE.test(name || "") || usualName(name, USUAL));
+  async function find(access, makeLink) {
+    let other = null;
+    const tryIns = async (ins) => {
+      for (const input of ins) {
+        const output = outputFor(access, input);
+        if (!output) continue;
+        try { await input.open(); await output.open(); } catch (_) { continue; }
+        const link = makeLink(input, output);
+        const id = await handshake(link);
+        if (id && id.startsWith(ID)) return { link, id, name: input.name };
+        if (id) other = other || id;
+        link.close();
+      }
+      return null;
+    };
+    const ins = livePorts(access.inputs).filter((p) => askable(p.name));
+    ins.sort((a, b) => NAME_RE.test(b.name) - NAME_RE.test(a.name));
+    let dev = await tryIns(ins);
+    if (!dev) {
+      const heard = await askAll(access, { skip: (n) => askable(n) || BLUETOOTH_RE.test(n) });
+      dev = await tryIns(heard.map((h) => h.input));
+    }
+    if (dev) return dev;
+    if (other) throw fail("model", `Le FM-1 joue un autre firmware (${other}), pas ${NAME}. Installe ${NAME} d'abord.`);
+    throw fail("notfound", `${NAME} introuvable. Branche le FM-1 avec un câble USB de données, ferme les autres applis qui utilisent son MIDI, et réessaie.`);
+  }
+
+  // the sound into slot (1..4): the command, then the FM-1's reads until it reports -> 0 kept, else its code
+  async function send(link, slot, rate, bytes, name, onProgress = () => {}) {
+    const body = [slot - 1, ...le32(rate), ...le32(bytes.length), ...le32(crc32(bytes)), ...nameBytes(name)];
+    const data = bytes.length ? bytes : new Uint8Array(1);
+    link.drain();
+    link.send(frame(IMP_CMD, body));
+    let last = Date.now(), idle = DELAY.first, asked = 0;
+    for (;;) {
+      const pkt = await link.read(DELAY.poll);
+      if (!pkt) {
+        if (link.lost) throw fail("lost", "Le FM-1 a été débranché. L'emplacement est vide : renvoie le son.");
+        if (Date.now() - last > idle) {
+          throw fail("stopped", asked ? `${NAME} a cessé de demander le son. Renvoie-le.`
+                                      : `${NAME} ne répond pas. S'il s'agit d'une version plus ancienne, mets-le à jour sur la page d'installation.`);
+        }
+        continue;
+      }
+      const r = parseRequest(pkt);
+      if (!r) continue;
+      last = Date.now(); idle = DELAY.idle; asked++;
+      const top = (r.addr & 0xFF000000) >>> 0;
+      if (top === OK_ADDR || top === FAIL_ADDR) {
+        link.send(response(r.addr, [0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0], r.fl));
+        return r.addr === OK_ADDR ? 0 : (r.addr & 0xFFFF) || 99;
+      }
+      if (r.len > MAXDATA || r.addr >= data.length) throw fail("badreq", `${NAME} a demandé un morceau hors du son. Rien n'a été gardé.`);
+      const part = Array.from(data.subarray(r.addr, r.addr + r.len));
+      while (part.length < r.len) part.push(0);
+      if (!link.send(response(r.addr, part, r.fl))) throw fail("lost", "Le FM-1 a été débranché.");
+      onProgress(Math.min(r.addr + r.len, data.length) * 100 / data.length);
+    }
+  }
+  return { IMP_CMD, SLOT_BYTES, RATES, OK_ADDR, FAIL_ADDR, ERRORS, ID, NAME, DELAY, pack7, unpack7, crc32, frame, response,
+           parseRequest, parseIdentity, ulaw, unulaw, rateFor, encode, nameBytes, find, send };
+})();
+// --- import protocol: end
+
+class Link {
+  constructor(input, output) {
+    this.input = input; this.output = output; this.q = []; this.waiter = null;
+    input.onmidimessage = (ev) => {
+      if (ev.data[0] !== 0xF0) return;
+      this.q.push(Array.from(ev.data));
+      if (this.waiter) { const w = this.waiter; this.waiter = null; w(); }
+    };
+  }
+  get lost() { return this.input.state === "disconnected" || this.output.state === "disconnected"; }
+  send(bytes) { try { this.output.send(bytes); return true; } catch (_) { return false; } }
+  drain() { this.q.length = 0; }
+  async read(ms) {
+    if (!this.q.length) {
+      let tm;
+      await Promise.race([new Promise((r) => { this.waiter = r; }), new Promise((r) => { tm = setTimeout(r, Math.max(ms, 0)); })]);
+      clearTimeout(tm);
+      this.waiter = null;
+    }
+    return this.q.shift() || null;
+  }
+  close() { this.input.onmidimessage = null; }
+}
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function say(html, err = false) { $("status").innerHTML = html; $("statusBox").className = err ? "status err" : "status"; }
+let decoded = null, bytes = null, rate = 22050, busy = false, access = null, ac = null;
+
+async function decode(file) {
+  ac = ac || new AudioContext();
+  const buf = await ac.decodeAudioData(await file.arrayBuffer());
+  return buf;
+}
+async function prepare() {
+  if (!decoded) return;
+  const want = $("quality").value;
+  // the length after the silence is cut decides the rate (auto); the sound mixed to mono and resampled by the browser
+  const ch0 = decoded.getChannelData(0);
+  let s = 0;
+  while (s < ch0.length && Math.abs(ch0[s]) < 0.003) s++;
+  const sec = (decoded.length - s) / decoded.sampleRate;
+  rate = GI.rateFor(sec, want);
+  const frames = Math.max(1, Math.ceil(decoded.duration * rate));
+  const oc = new OfflineAudioContext(1, frames, rate);
+  const src = oc.createBufferSource();
+  src.buffer = decoded;
+  src.connect(oc.destination);
+  src.start();
+  const mono = (await oc.startRendering()).getChannelData(0);
+  bytes = GI.encode(mono);
+  draw();
+  const kept = bytes.length / rate, cut = sec - kept > 0.05;
+  $("facts").textContent = `${kept.toFixed(2).replace(".", ",")} s à ${(rate / 1000).toLocaleString("fr")} kHz, ${bytes.length.toLocaleString("fr")} octets` +
+    (cut ? ` (la fin est coupée : le son dure ${sec.toFixed(1).replace(".", ",")} s, un emplacement garde ${(GI.SLOT_BYTES / rate).toFixed(1).replace(".", ",")} s à cette qualité)` : "");
+  $("prep").hidden = false;
+  $("send").disabled = false;
+}
+function draw() {
+  const cv = $("wave"), g = cv.getContext("2d"), w = cv.width, h = cv.height;
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--wave").trim() || "#1f8a80";
+  const per = bytes.length / w;
+  for (let x = 0; x < w; x++) {
+    let lo = 1, hi = -1;
+    for (let i = Math.floor(x * per); i < Math.min(bytes.length, Math.floor((x + 1) * per) + 1); i++) {
+      const v = GI.unulaw(bytes[i]);
+      lo = Math.min(lo, v); hi = Math.max(hi, v);
+    }
+    g.fillRect(x, h / 2 - hi * h * 0.48, 1, Math.max(1, (hi - lo) * h * 0.48));
+  }
+}
+async function pick(file) {
+  if (!file || busy) return;
+  say(`Lecture de ${esc(file.name)}&hellip;`);
+  try {
+    decoded = await decode(file);
+    if (!$("name").value) $("name").value = file.name.replace(/\.[^.]*$/, "").normalize("NFD").toUpperCase().replace(/[^A-Z0-9 _-]/g, "").slice(0, 9);
+    await prepare();
+    say("Prêt. Choisis l'emplacement, puis <b>Envoyer au FM-1</b>.");
+  } catch (e) {
+    decoded = bytes = null;
+    $("send").disabled = true;
+    say(`Impossible de lire ce fichier : ${esc(e.message || e)}`, true);
+  }
+}
+$("file").addEventListener("change", (e) => { pick(e.target.files[0]); e.target.value = ""; });
+const drop = $("drop");
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); pick(e.dataTransfer.files[0]); });
+$("quality").addEventListener("change", () => prepare().catch((e) => say(esc(e.message), true)));
+$("listen").addEventListener("click", () => {
+  if (!bytes) return;
+  ac = ac || new AudioContext();
+  const b = ac.createBuffer(1, bytes.length, rate), d = b.getChannelData(0);
+  for (let i = 0; i < bytes.length; i++) d[i] = GI.unulaw(bytes[i]);
+  const s = ac.createBufferSource();
+  s.buffer = b; s.connect(ac.destination); s.start();
+});
+
+async function connect() {
+  if (!navigator.requestMIDIAccess) throw Object.assign(new Error("Ce navigateur n'a pas Web MIDI. Ouvre cette page dans Chrome ou Edge."), { code: "nomidi" });
+  if (!access) {
+    try { access = await navigator.requestMIDIAccess({ sysex: true }); }
+    catch (_) { throw Object.assign(new Error("Le MIDI avec SysEx n'a pas été autorisé. Autorise le MIDI dans les réglages du site (barre d'adresse), puis réessaie."), { code: "denied" }); }
+  }
+  say(`Recherche de ${esc(FW.name)}&hellip;`);
+  return GI.find(access, (i, o) => new Link(i, o));
+}
+async function run(clear) {
+  if (busy) return;
+  busy = true;
+  $("send").disabled = $("clear").disabled = true;
+  const slot = Number($("slot").value), bar = $("bar");
+  let dev = null;
+  try {
+    dev = await connect();
+    say(clear ? `Vidage de U${slot}&hellip;` : `Envoi dans U${slot}&hellip; Le son du FM-1 s'arrête pendant l'écriture.`);
+    bar.hidden = false; bar.value = 0;
+    const code = await GI.send(dev.link, slot, rate, clear ? new Uint8Array(0) : bytes, $("name").value, (p) => { bar.value = p; });
+    if (code) say(`Pas gardé : ${esc(GI.ERRORS[code] || "code " + code)}. Réessaie.`, true);
+    else say(clear ? `U${slot} est vide.` : `C'est fait : U${slot} garde ton son, et il joue. Sur le FM-1, SELECT le retrouve parmi les sources.`);
+  } catch (e) {
+    say(esc(e.message || e), true);
+  } finally {
+    if (dev) dev.link.close();
+    bar.hidden = true;
+    busy = false;
+    $("send").disabled = !bytes;
+    $("clear").disabled = false;
+  }
+}
+$("send").addEventListener("click", () => run(false));
+$("clear").addEventListener("click", () => run(true));
+</script>
+</body>
+</html>

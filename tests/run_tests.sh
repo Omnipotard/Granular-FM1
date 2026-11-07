@@ -18,4 +18,9 @@ done
 # the computer's side of a USB import (tools/graine_import.py) against a simulated FM-1
 python3 tests/import_tool_test.py >/dev/null || { python3 tests/import_tool_test.py | grep FAIL; fail=1; }
 echo "tests/import_tool_test.py: $(python3 tests/import_tool_test.py | grep ' ok$' | grep -vc '^all ok') checks"
+# the site's importer page against a simulated FM-1
+if command -v node >/dev/null; then
+    node tests/importer_page_test.mjs >/dev/null || { node tests/importer_page_test.mjs | grep FAIL; fail=1; }
+    echo "tests/importer_page_test.mjs: $(node tests/importer_page_test.mjs | grep -c '^ok')"" checks"
+fi
 exit $fail

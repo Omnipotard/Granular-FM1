@@ -22,7 +22,7 @@ Le code de GRAINE est sous MIT. Le README décrit l'instrument côté musicien ;
 | `app/graine.h` | ce que moteur et interface partagent : paramètres (`P_*`), sources, événements, snapshot `GV`, état de jeu `GP` |
 | `app/dsp/engine.c` | le son, unité séparée compilée en -O2 (`fm1.toml o2`), appelée par l'interruption audio. Grains, voix, balayage, fenêtres, modulations, filtre SVF, écho ping-pong, réverb FDN, matière, capture, arpège, horloge, gestes |
 | `app/ui/params.c` | table `PDEF` (libellés FR/EN, plages, unités), `PAGES`, formatage des valeurs (`pfmt`) |
-| `app/ui/store.c` | réglages, banque de 16 patchs en deux objets de 8 (`OBJ_BANK` 0xD8000, `OBJ_BANK2` 0xDA000 : un objet fait 3 840 o au plus), 16 presets usine (`FACTORY`), emplacements U1–U4 dans la zone data (0x97000 + i×0x10000, en-tête 32 o + µ-law) |
+| `app/ui/store.c` | réglages, banque de 24 patchs en deux objets de 12 (`OBJ_BANK` 0xD8000, `OBJ_BANK2` 0xDA000 : un objet fait 3 840 o au plus), 24 presets usine (`FACTORY`), `slot_import` (import USB), emplacements U1–U4 dans la zone data (0x97000 + i×0x10000, en-tête 32 o + µ-law) |
 | `app/ui/draw.c` | rendu par bandes de 80 lignes sur le canvas de fm1-base : mélange, lueurs additives, anneaux AA, texte |
 | `app/ui/screen.c` | l'écran : en-tête, nuage (forme d'onde + grains), aperçu, TAPIS, toasts, overlays, bande des 4 knobs, splash |
 | `app/ui/viz.c` | le dessin de chaque page en surimpression sur le nuage (enveloppes, LFO, filtre, écho, espace, grain, balayage, matière, arpège, gamme, horloge, scènes, drone, chaos, halo, hachoir, pluie), choisi par le 1er knob de la page ; inclus par screen.c |

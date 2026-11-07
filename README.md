@@ -3,11 +3,16 @@
 Un synthé granulaire à base d'échantillons pour le **M-VAVE FM-1**. Firmware libre (MIT), bâti sur
 [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0).
 
-![L'écran de GRAINE : le nuage de grains sur la forme d'onde, les quatre knobs colorés](docs/img/screen-cloud.png)
+**Le site : [omnipotard.github.io/Granular-FM1](https://omnipotard.github.io/Granular-FM1/)** : installer GRAINE,
+importer tes sons, le manuel complet, l'émulateur, le firmware à télécharger.
 
-Huit sources synthétisées et tes propres captures, lues par jusqu'à **64 grains** répartis sur **6 voix**.
-L'écran montre ce que tu entends : chaque grain est une graine lumineuse posée là où il lit le son, sa hauteur
-le fait monter ou descendre, sa taille le fait grossir.
+![L'écran de GRAINE : le nuage de grains sur la forme d'onde, les quatre knobs colorés](app/docs/img/page-cloud.png)
+
+Treize sources synthétisées (dont cinq qui évoluent : arpège, basse, accords, nappe, séquence), ta capture et
+quatre emplacements pour tes sons, lus par jusqu'à **128 grains** sur **6 voix**, calculés par les **deux cœurs**
+du FM-1. Vingt-quatre pages de quatre knobs, chacune avec son dessin : des nappes qui planent (grains étirés,
+chœur, shimmer, résonateurs accordés, espace infini, scènes A/B, pluie de notes) aux sons qui piquent (grains
+fous, hachoir sur l'horloge, masques rythmiques, anneau, pliage). Le manuel complet : `app/docs/MANUAL.md`.
 
 ## Le principe : trois gestes
 
@@ -69,7 +74,7 @@ actifs tant qu'on les tient :
 gel · envers · −1 octave · +1 octave · quinte · nuée (densité ×4) · poussière (grains ÷4) · bégaie
 (répétition à la double-croche) · dérive (flou et stéréo au maximum) · sombre (filtre fermé) · écho (envoi dub).
 
-![Le TAPIS : seize tranches numérotées, les pads en bas](docs/img/screen-tapis.png)
+![Le TAPIS : seize tranches numérotées, les pads en bas](app/docs/img/page-tapis.png)
 
 ## Les sons
 
@@ -99,14 +104,23 @@ audio dans U1–U4 et brancher un clavier MIDI.
 ```sh
 git submodule update --init --recursive
 ./build.sh --host            # le simulateur : n'importe quel compilateur C
-sh tests/run_tests.sh        # les tests scriptés (35 vérifications)
+sh tests/run_tests.sh        # les tests : simulateur, outil d'import, page d'import
 ./build.sh --web             # l'émulateur (Emscripten, ou clang + tools/emcc-wasi)
-./build.sh                   # le paquet FM-1 : toolchain JieLi + SDK AC79 (Linux ou WSL)
+sh base/tools/get_toolchain.sh                    # la toolchain JieLi (Linux ou WSL)
+git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK
+JIELI_TOOLCHAIN=~/.jieli/toolchain AC79_SDK=~/fw-AC79_AIoT_SDK ./build.sh   # le paquet FM-1 (app/build/graine.fwsc)
+python3 tools/site.py 0.2 --publish               # la release, le site, poussés sur gh-pages
 ```
 
-Le plus simple pour obtenir le `.fwsc` : pousser le dépôt sur GitHub et créer un tag `v0.1` ;
-`.github/workflows/release.yml` le compile avec le builder partagé de la communauté FM-1 et le signe.
-On l'installe ensuite comme tout firmware fm1-base (installateur web de Felucca ou `base/tools/fm1_install.py`).
+Un tag `vX.Y` poussé sur GitHub lance aussi `.github/workflows/release.yml` : le builder partagé de la
+communauté FM-1 compile, teste et signe le paquet, et publie la release.
+
+## Importer des sons sans navigateur
+
+```sh
+pip install mido python-rtmidi
+python3 tools/graine_import.py mon-son.wav --slot 1
+```
 
 ## Licence
 

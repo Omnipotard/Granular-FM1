@@ -8,14 +8,14 @@
 
 #define G_SR 44100
 #define G_MAXV 6                          /* voices */
-#define G_MAXG 64                         /* grains, shared by the voices */
-#define G_NBUILTIN 8                      /* sources in the firmware (sounds/bank.h) */
+#define G_MAXG 128                        /* grains, shared by the voices (64 on one core: eng_cores) */
+#define G_NBUILTIN 13                     /* sources in the firmware (sounds/bank.h): 8, then 5 that evolve */
 #define G_NUSER 4                         /* user slots in the flash (captures kept) */
 #define G_SRC_CAPT G_NBUILTIN             /* the capture buffer, in RAM */
 #define G_NSRC (G_NBUILTIN + 1 + G_NUSER)
 #define G_CAP_RATE 22050u
 #define G_CAP_LEN 65472u                  /* samples: 2.97 s at 22,050 Hz; a user slot holds one */
-#define G_NPATCH 16
+#define G_NPATCH 24                       /* (two store objects of 12)*/
 #define G_NMOD 16                         /* modulation slots in a patch */
 #define G_NLANE 4                         /* gesture lanes */
 #define G_LANE_STEPS 128
@@ -116,6 +116,7 @@ enum { EV_NOTE_ON, EV_NOTE_OFF, EV_ALL_OFF, EV_PRESS, EV_BEND, EV_WHEEL, EV_SUST
        EV_MIDI_TICK, EV_MIDI_START, EV_MIDI_STOP, EV_CAPTURE, EV_LFO_SYNC };
 void eng_event(uint8_t type, int32_t a, int32_t b);   /* main loop: queued, taken at the next block */
 void eng_init(void);
+void eng_cores(int two);                    /* app_init: the second core runs (plat_cpu2_set) or not */
 void eng_render(int32_t *lr, uint32_t n, uint32_t master_q12);   /* audio interrupt */
 void eng_panic(void);
 void eng_overload(void);

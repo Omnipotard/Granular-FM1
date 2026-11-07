@@ -191,6 +191,9 @@ typedef struct {
 static voice_t V[G_MAXV];
 static uint32_t vage;
 static float vbuf[G_MAXV][2][CH];
+static float vbuf2[G_MAXV][2][CH];                         /* the second core's grains, summed into vbuf after */
+static uint8_t two_cores;
+static uint32_t job_n;                                     /* the chunk's frames, for the second core's job */
 static float gn[NP];                                       /* the parameters, normalized, with the global modulations */
 static int newest = 0;
 static float bend, wheel;
@@ -280,7 +283,7 @@ static void src_init(void)
         G_SRC[i].u8 = SND_BANK[i].data;
         G_SRC[i].s16 = 0;
         G_SRC[i].len = SND_BANK[i].len;
-        G_SRC[i].rate = SND_RATE;
+        G_SRC[i].rate = SND_BANK[i].rate;
         for (k = 0; k < 9u && SND_BANK[i].name[k]; k++)
             G_SRC[i].name[k] = SND_BANK[i].name[k];
         G_SRC[i].name[k] = 0;
@@ -326,6 +329,23 @@ void eng_panic(void)
     }
     nheld = 0;
     arp_key = -1;
+}
+
+void eng_cores(int two)
+{
+    two_cores = (uint8_t)(two != 0);
+    maxg = two_cores ? G_MAXG : G_MAXG / 2u;
+}
+
+static void grain_run(grain_t *g, uint32_t n, float (*vb)[2][CH]);
+
+/* the second core's job: the odd grains, into its own buffers */
+static void grains_job(uint32_t first)
+{
+    uint32_t j;
+    for (j = first; j < G_MAXG; j += 2u)
+        if (gr[j].on)
+            grain_run(&gr[j], job_n, vbuf2);
 }
 
 void eng_overload(void)
@@ -864,9 +884,9 @@ static void grain_spawn(voice_t *v, uint32_t offset, float pitch_base, const gsr
 }
 
 /* the grain's frames into its voice's buffer */
-static void grain_run(grain_t *g, uint32_t n)
+static void grain_run(grain_t *g, uint32_t n, float (*vb)[2][CH])
 {
-    float *ol = vbuf[g->voice][0], *or_ = vbuf[g->voice][1];
+    float *ol = vb[g->voice][0], *or_ = vb[g->voice][1];
     uint32_t i = g->delay, wph = g->wph, winc = g->winc, frac = g->frac;
     int32_t ipos = g->ipos, len1 = g->len1;
     const uint8_t *u8 = g->u8;
@@ -1660,9 +1680,34 @@ void eng_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         for (j = 0; j < G_MAXV; j++)
             if (V[j].stage || V[j].gate)
                 voice_chunk(&V[j], c, clock_beat, bps);
-        for (j = 0; j < G_MAXG; j++)
-            if (gr[j].on)
-                grain_run(&gr[j], c);
+        {                                               /* the grains: the odd ones on the second core */
+            int shared = 0;
+            if (two_cores && plat_cpu2_on()) {
+                for (j = 0; j < G_MAXV; j++)
+                    for (i = 0; i < c; i++)
+                        vbuf2[j][0][i] = vbuf2[j][1][i] = 0.0f;
+                job_n = c;
+                plat_cpu2_sync();
+                shared = plat_cpu2_run(grains_job, 1u);
+            }
+            for (j = 0; j < G_MAXG; j += shared ? 2u : 1u)
+                if (gr[j].on)
+                    grain_run(&gr[j], c, vbuf);
+            if (shared) {
+                if (plat_cpu2_wait() < 0) {             /* given up: its share here, after all */
+                    two_cores = 0;
+                    if (maxg > G_MAXG / 2u)
+                        maxg = G_MAXG / 2u;
+                    grains_job(1u);
+                }
+                plat_cpu2_sync();
+                for (j = 0; j < G_MAXV; j++)
+                    for (i = 0; i < c; i++) {
+                        vbuf[j][0][i] += vbuf2[j][0][i];
+                        vbuf[j][1][i] += vbuf2[j][1][i];
+                    }
+            }
+        }
         for (i = 0; i < c; i++)
             mixl[i] = mixr[i] = 0.0f;
         for (j = 0; j < G_MAXV; j++)
@@ -1710,7 +1755,7 @@ void eng_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     if ((sample_count & 0x7FFFu) < n && GV.grains_dropped)
         GV.grains_dropped = 0;                           /* the screen shows drops of the last 0.7 s */
     out_peak *= 0.9f;
-    if (maxg < G_MAXG && (sample_count & 0x3FFFu) < n)
+    if (maxg < (two_cores ? G_MAXG : G_MAXG / 2u) && (sample_count & 0x3FFFu) < n)
         maxg++;                                          /* the overload's cut grows back slowly */
     view_update();
 }

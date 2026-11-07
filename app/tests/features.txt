@@ -100,7 +100,7 @@ tap REC
 wait 30
 expect capturing 0
 expect cap_len >30000
-expect p.8 8
+expect p.8 13
 key 7 down 100
 wait 900
 shot capture_source.png
@@ -117,7 +117,7 @@ tap OCT+
 wait 300
 expect overlay 0
 expect user_len0 >30000
-expect p.8 9
+expect p.8 14
 # gesture: REC held, K1 turned over a second
 press REC
 turn K1 10 60

@@ -11,6 +11,7 @@
 #define APP_BLOCK 128u                   /* frames per audio block: 2.9 ms at 44.1 kHz */
 #define APP_TOUCH                        /* velocity and pressure from the keys (lib/touch.h) */
 #define APP_CANVAS_PX (240u * 80u)       /* the screen drawn in three bands of 80 rows (ui/draw.c) */
+#define APP_USB_CMD                      /* a sound from the computer into a user slot (app.c app_usb_cmd) */
 #define APP_OVERLOAD                     /* the render over 90 % of its time: fewer grains for a moment */
 
 /* the store: the settings, the patches (two halves of 8), the panel's calibration (the platform's); the user sources are in the

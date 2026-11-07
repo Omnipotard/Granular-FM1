@@ -1,0 +1,25 @@
+# GRAINE in the host simulator: a sound sent over USB into a user slot (store.c slot_import, app.c app_usb_cmd), the
+# computer's side made up by host.c (a tone, its CRC-32).
+wait 1800
+expect user_len.1 0
+expect import.1.40000 0
+expect user_len.1 40000
+expect data.0xA7000 0x47
+# a CRC that does not match: nothing kept
+expect import.1.30000.bad 22
+expect user_len.1 0
+# the longest that fits, then a sound too long, a slot that is not there
+expect import.2.65504 0
+expect user_len.2 65504
+expect import.0.65505 1
+expect import.4.100 1
+expect user_len.0 0
+# an empty sound clears the slot
+expect import.2.0 0
+expect user_len.2 0
+# kept over a restart
+expect import.3.12345 0
+power off
+power on
+wait 1800
+expect user_len.3 12345

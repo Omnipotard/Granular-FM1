@@ -114,6 +114,38 @@ static const fpreset_t FACTORY[G_NPATCH] = {
     {"RECOLTE", {{P_SAMPLE, G_SRC_CAPT}, {P_POS, 200}, {P_SIZE, 123}, {P_DENS, 129}, {P_SPRAY, 15},
                  {P_SPEED, 50}, {P_STEREO, 70}, {P_RMIX, 30}, {P_AATK, 33}, {P_AREL, 70}, END},
      {{MS_LFO2, P_POS, 20, 0}, MNONE, MNONE, MNONE}},
+    {"MONTEE", {{P_SAMPLE, 8}, {P_POS, 0}, {P_SIZE, 112}, {P_DENS, 140}, {P_SPRAY, 6}, {P_SPEED, 25},
+                {P_STEREO, 80}, {P_AATK, 40}, {P_AREL, 70}, {P_SHIM, 30}, {P_RMIX, 40}, {P_RDEC, 70}, {P_DTIME, 9},
+                {P_DMIX, 22}, {P_DFB, 45}, {P_LEVEL, 55}, END},
+     {{MS_LFO2, P_SPRAY, 15, 0}, MNONE, MNONE, MNONE}},
+    {"GRAVE", {{P_SAMPLE, 9}, {P_POS, 0}, {P_SIZE, 104}, {P_DENS, 150}, {P_SPRAY, 2}, {P_SPEED, 50},
+               {P_CUT, 120}, {P_RES, 45}, {P_DRIVE, 35}, {P_AATK, 8}, {P_ADEC, 55}, {P_ASUS, 70}, {P_AREL, 40},
+               {P_RMIX, 8}, {P_LEVEL, 60}, END},
+     {{MS_ENV, P_CUT, 35, 0}, {MS_VEL, P_DRIVE, 30, 0}, MNONE, MNONE}},
+    {"CATHEDRALE", {{P_SAMPLE, 10}, {P_POS, 100}, {P_SIZE, 150}, {P_DENS, 120}, {P_SPRAY, 15}, {P_SPEED, 8},
+                    {P_STRETCH, 45}, {P_DETUNE, 55}, {P_STEREO, 95}, {P_SHIM, 40}, {P_RMIX, 55}, {P_RSIZE, 95},
+                    {P_RDEC, 85}, {P_AATK, 77}, {P_AREL, 87}, {P_LEVEL, 45}, END},
+     {{MS_LFO1, P_POS, 10, 0}, MNONE, MNONE, MNONE}},
+    {"AUBE", {{P_SAMPLE, 11}, {P_POS, 0}, {P_SIZE, 160}, {P_DENS, 110}, {P_SPRAY, 10}, {P_SPEED, 6},
+              {P_SCAN, 1}, {P_STRETCH, 60}, {P_RESO, 30}, {P_RMIX, 45}, {P_RDEC, 80}, {P_AATK, 87}, {P_AREL, 92},
+              {P_L1SYNC, 2}, {P_LEVEL, 55}, END},
+     {{MS_LFO1, P_CUT, 25, 0}, {MS_LFO2, P_SPREAD, 20, 0}, MNONE, MNONE}},
+    {"MACHINERIE", {{P_SAMPLE, 12}, {P_POS, 0}, {P_SIZE, 90}, {P_DENS, 100}, {P_TIMING, 2}, {P_SPEED, 100},
+                    {P_GATE, 4}, {P_SWING, 40}, {P_CHOP, 1}, {P_CHPROB, 25}, {P_DTIME, 7}, {P_DMIX, 25}, {P_DFB, 40},
+                    {P_AATK, 4}, {P_AREL, 40}, {P_LEVEL, 60}, END},
+     {{MS_ALEA, P_POS, 20, 0}, MNONE, MNONE, MNONE}},
+    {"MIRAGE", {{P_SAMPLE, 10}, {P_SRC2, 11}, {P_XFADE, 45}, {P_POS, 300}, {P_SIZE, 140}, {P_DENS, 130},
+                {P_SPRAY, 25}, {P_SPEED, 12}, {P_DETUNE, 35}, {P_STEREO, 90}, {P_RMIX, 45}, {P_AATK, 66},
+                {P_AREL, 80}, {P_LEVEL, 50}, END},
+     {{MS_LFO1, P_XFADE, 40, 0}, {MS_LFO2, P_POS, 20, 0}, MNONE, MNONE}},
+    {"ORAGE", {{P_SAMPLE, 12}, {P_SRC2, 6}, {P_XFADE, 30}, {P_SIZE, 80}, {P_DENS, 150}, {P_SPEED, 150},
+               {P_SCAN, 4}, {P_CHAOS, 40}, {P_CHOP, 5}, {P_CHPROB, 45}, {P_FOLD, 25}, {P_RING, 15}, {P_AATK, 4},
+               {P_RMIX, 20}, {P_LEVEL, 50}, END},
+     {{MS_ALEA, P_FOLD, 30, 0}, MNONE, MNONE, MNONE}},
+    {"SABLIER", {{P_SAMPLE, 8}, {P_POS, 500}, {P_SIZE, 125}, {P_DENS, 135}, {P_SPRAY, 40}, {P_REV, 60},
+                 {P_SPEED, 0}, {P_SCAN, 3}, {P_RAIN, 30}, {P_RLEN, 55}, {P_SHIM, 25}, {P_RMIX, 40}, {P_AATK, 50},
+                 {P_AREL, 75}, {P_LEVEL, 55}, END},
+     {{MS_LFO1, P_POS, 25, 0}, MNONE, MNONE, MNONE}},
 };
 
 static void params_default(int globals_too)
@@ -283,6 +315,73 @@ static int slot_keep(int i, const char *name)
     h.rsv[0] = h.rsv[1] = 0xFFFFFFFFu;
     if (plat_data_write(off, &h, sizeof h))           /* the header last: a slot is whole or not there */
         return -4;
+    slots_scan();
+    return 0;
+}
+
+/* ------------------------------------------------------------------------------ a sound sent over USB --- */
+/* tools/graine_import.py and the site's importer send a sound already as the FM-1 keeps it (mu-law, its rate): the
+ * command (IMP_CMD, below), then the FM-1 pulls the bytes (rd: plat_host_read on the FM-1) and checks their CRC-32 */
+#define IMP_CMD 0x47u                            /* 'G' (the platform's own commands: 0x11, 0x41..0x44, 0x50, 0x54) */
+static uint32_t crc32_upd(uint32_t c, const uint8_t *p, uint32_t n)   /* zlib's, bit by bit */
+{
+    uint32_t i;
+    int k;
+    c = ~c;
+    for (i = 0; i < n; i++) {
+        c ^= p[i];
+        for (k = 0; k < 8; k++)
+            c = c & 1u ? (c >> 1) ^ 0xEDB88320u : c >> 1;
+    }
+    return ~c;
+}
+/* -> 0 kept; 1 a bad request, 2 the transfer, 7 an erase, 8 a write, 22 the CRC (the slot is left empty) */
+static int slot_import(int i, uint32_t rate, uint32_t len, uint32_t crc, const char *name,
+                       int (*rd)(uint32_t addr, uint8_t *dst, uint32_t n))
+{
+    static uint8_t buf[512];
+    uint32_t off = SLOT_BASE + (uint32_t)i * SLOT_SIZE, k, n, c = 0;
+    slot_head_t h;
+    if (i < 0 || i >= G_NUSER || (len && (len < 64u || len > SLOT_SIZE - SLOT_HEAD || rate < 8000u || rate > 48000u)))
+        return 1;
+    G_SRC[G_SRC_CAPT + 1 + i].len = 0;           /* the engine lets the slot go before it is erased */
+    for (k = 0; k < SLOT_SIZE; k += 4096u)
+        if (plat_data_erase(off + k)) {
+            slots_scan();
+            return 7;
+        }
+    if (!len) {                                  /* (an empty sound: the slot cleared) */
+        slots_scan();
+        return 0;
+    }
+    for (k = 0; k < len; k += n) {
+        n = len - k > sizeof buf ? sizeof buf : len - k;
+        if (rd(k, buf, n)) {
+            slots_scan();
+            return 2;
+        }
+        c = crc32_upd(c, buf, n);
+        if (plat_data_write(off + SLOT_HEAD + k, buf, n)) {
+            slots_scan();
+            return 8;
+        }
+    }
+    if (c != crc) {
+        slots_scan();
+        return 22;
+    }
+    h.magic = SLOT_MAGIC;
+    h.len = len;
+    h.rate = rate;
+    for (k = 0; k < 12u; k++)
+        h.name[k] = 0;
+    for (k = 0; k < 9u && name[k] >= ' ' && name[k] < 127; k++)
+        h.name[k] = name[k];
+    h.rsv[0] = h.rsv[1] = 0xFFFFFFFFu;
+    if (plat_data_write(off, &h, sizeof h)) {     /* the header last: a slot is whole or not there */
+        slots_scan();
+        return 8;
+    }
     slots_scan();
     return 0;
 }

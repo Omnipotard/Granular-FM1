@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: MIT
  * Copyright (C) 2026 GRAINE contributors */
 /* The host simulator's checks: "expect WHAT VALUE" in the app's tests (host/plat_host.c). */
+static const uint8_t *host_tone;
+static int host_rd(uint32_t addr, uint8_t *dst, uint32_t n)   /* the computer's side of an import, in the simulator */
+{
+    uint32_t k;
+    for (k = 0; k < n; k++)
+        dst[k] = host_tone[addr + k];
+    return 0;
+}
 int app_expect(const char *what, int *got)
 {
     int i;
@@ -54,6 +62,19 @@ int app_expect(const char *what, int *got)
         *got = GV.rain_n;
     else if (!strcmp(what, "cap_wait"))
         *got = GV.cap_wait;
+    else if (!strncmp(what, "import.", 7)) {         /* import.SLOT.LEN[.bad]: slot_import from a made-up computer */
+        int sl = atoi(what + 7), bad = strstr(what, ".bad") != 0;
+        const char *q = strchr(what + 7, '.');
+        uint32_t len = q ? (uint32_t)atoi(q + 1) : 0u, k, crc;
+        static uint8_t tone[65504];
+        for (k = 0; k < len && k < sizeof tone; k++)
+            tone[k] = (uint8_t)(128 + (int)(100.0f * fm_sin_turns((float)k / 50.0f)));
+        crc = crc32_upd(0, tone, len) ^ (bad ? 1u : 0u);
+        host_tone = tone;
+        *got = slot_import(sl, 22050u, len, crc, "TEST", host_rd);
+    }
+    else if (!strncmp(what, "user_len.", 9))         /* user_len.I: user slot I's length (0..3) */
+        *got = (int)G_SRC[G_SRC_CAPT + 1 + clamp(atoi(what + 9), 0, G_NUSER - 1)].len;
     else if (!strcmp(what, "user_len0"))
         *got = (int)G_SRC[G_SRC_CAPT + 1].len;
     else if (!strncmp(what, "p.", 2)) {               /* p.N: parameter N's raw value */

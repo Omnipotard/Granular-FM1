@@ -15,4 +15,7 @@ for t in app/tests/*.txt; do
     fi
     echo "$t: $ok checks"
 done
+# the computer's side of a USB import (tools/graine_import.py) against a simulated FM-1
+python3 tests/import_tool_test.py >/dev/null || { python3 tests/import_tool_test.py | grep FAIL; fail=1; }
+echo "tests/import_tool_test.py: $(python3 tests/import_tool_test.py | grep ' ok$' | grep -vc '^all ok') checks"
 exit $fail

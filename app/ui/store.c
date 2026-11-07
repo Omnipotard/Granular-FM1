@@ -7,7 +7,7 @@
 #define BANK_MAGIC 0x324B4E42u                   /* "BNK2": in two halves (OBJ_BANK, OBJ_BANK2) */
 #define SLOT_MAGIC 0x31535247u                   /* "GRS1" */
 #define SLOT_BASE 0x97000u
-#define SLOT_SIZE 0x10000u
+#define SLOT_SIZE (64u * 1024u)                 /* 64 KiB a slot */
 #define SLOT_HEAD 32u
 
 typedef struct {

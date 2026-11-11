@@ -3,8 +3,10 @@
 """An `emcc` stand-in for fm1-base's `build.py --web`: clang (15+, with the wasm32 target and wasm-ld) and the WASI
 sysroot of wasi-sdk 25, no Emscripten. tools/emcc-wasi/get_wasi.sh fetches the sysroot into $WASI_DIR (~/.wasi).
     PATH="$PWD/tools/emcc-wasi:$PATH" ./build.sh --web
-It maps the emcc options build.py uses (-sSTANDALONE_WASM, -sSTACK_SIZE, -sINITIAL_MEMORY, -sFILESYSTEM, --no-entry)
-onto clang and wasm-ld; the module is a WASI reactor (it exports _initialize, which fm1-base's worklet calls)."""
+It maps the emcc options build.py uses (-sSTANDALONE_WASM, -sSTACK_SIZE, -sINITIAL_MEMORY, -sALLOW_MEMORY_GROWTH=0,
+-sFILESYSTEM, --no-entry) onto clang and wasm-ld; the module is a WASI reactor (it exports _initialize, which
+fm1-base's worklet calls). With --rfm1 (and an em-config on the PATH) it builds the .rfm1 too: a fixed memory, as
+Emscripten makes it when the memory may not grow (the maximum the initial size: tools/rfm1_pack.py checks it)."""
 import os
 import subprocess
 import sys
@@ -35,12 +37,14 @@ if "--version" in args:
     sys.exit(0)
 if not os.path.isdir(SYSROOT):
     sys.exit(f"emcc-wasi: no WASI sysroot in {WASI} (tools/emcc-wasi/get_wasi.sh)")
-out, stack, mem = [], 1048576, 33554432
+out, stack, mem, fixed = [], 1048576, 33554432, False
 for a in args:
     if a.startswith("-sSTACK_SIZE="):
         stack = int(a.split("=")[1])
     elif a.startswith("-sINITIAL_MEMORY="):
         mem = int(a.split("=")[1])
+    elif a == "-sALLOW_MEMORY_GROWTH=0":
+        fixed = True
     elif a.startswith("-s") or a == "--no-entry":
         continue
     else:
@@ -50,5 +54,5 @@ if "-c" in out:
     cmd += out
 else:
     cmd += ["-mexec-model=reactor", *out, "-Wl,--export-dynamic", "-Wl,--no-entry", f"-Wl,-z,stack-size={stack}",
-            f"-Wl,--initial-memory={mem}", "-Wl,--allow-undefined"]
+            f"-Wl,--initial-memory={mem}", *([f"-Wl,--max-memory={mem}"] if fixed else []), "-Wl,--allow-undefined"]
 sys.exit(subprocess.run(cmd).returncode)

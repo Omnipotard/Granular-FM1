@@ -16,8 +16,8 @@ licence = "MIT"
 credits = "Built on fm1-base (MPL-2.0) and felucca-bsp, from Felucca by Leo Kuroshita (Hugelton Instruments). Every built-in sound is synthesized by tools/gen_sounds.py."
 # firmware.json, for firmware hubs (fm1-base docs/FIRMWARE-JSON.md)
 author = "GRAINE contributors"
-description = "GRAINE turns the M-VAVE FM-1 into a granular sampler: eight synthesized sources and your own captures, read by up to 64 grains in six voices. Four coloured knobs on every page, modulation by gesture (hold LFO or ENV, turn a knob), the TAPIS keyboard of positions and performance pads, recorded knob gestures, capture and resampling of the output, a filter, an echo, a reverb and a dice."
+description = "GRAINE turns the M-VAVE FM-1 into a granular synthesizer: thirteen synthesized sources (five that evolve: an arpeggio, a bass line, chords, a pad, a sequence), your captures and your own sounds sent over USB, read by up to 128 grains in six voices on both cores. Twenty-four pages of four coloured knobs, each drawn over the cloud: stretched grains, chorus, shimmer, tuned resonators, a frozen space, A/B scenes, falling notes, wild grains, a clocked chopper, rhythmic gates, ring and fold. Modulation by gesture, recorded knob gestures, the TAPIS of positions and pads."
 tags = ["synth", "sampler", "ambient", "experimental"]
-install = "https://github.com/Omnipotard/Granular-FM1/releases/latest"   # the page that installs it
-site = ""
-screenshot = "docs/img/screen-cloud.png"
+install = "https://omnipotard.github.io/Granular-FM1/install/"   # the site's web installer (tools/site.py)
+site = "https://omnipotard.github.io/Granular-FM1/"
+screenshot = "app/docs/img/page-cloud.png"

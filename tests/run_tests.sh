@@ -18,6 +18,9 @@ done
 # the computer's side of a USB import (tools/graine_import.py) against a simulated FM-1
 python3 tests/import_tool_test.py >/dev/null || { python3 tests/import_tool_test.py | grep FAIL; fail=1; }
 echo "tests/import_tool_test.py: $(python3 tests/import_tool_test.py | grep ' ok$' | grep -vc '^all ok') checks"
+# the voice pack, as the importer takes it
+python3 tests/voice_pack_test.py >/dev/null || { python3 tests/voice_pack_test.py | grep FAIL; fail=1; }
+echo "tests/voice_pack_test.py: $(python3 tests/voice_pack_test.py | grep -c ': ok$') checks"
 # the site's importer page against a simulated FM-1
 if command -v node >/dev/null; then
     node tests/importer_page_test.mjs >/dev/null || { node tests/importer_page_test.mjs | grep FAIL; fail=1; }

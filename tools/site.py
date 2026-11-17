@@ -55,6 +55,9 @@ def main(argv=None):
                           "app/web/importer")
     (out / "importer").mkdir(exist_ok=True)
     (out / "importer" / "index.html").write_text(html, encoding="utf-8")
+    voix = APP / "sounds" / "voix"                  # the voice pack (tools/gen_voices.py), the importer's buttons
+    if (voix / "index.json").exists():
+        shutil.copytree(voix, out / "importer" / "voix", dirs_exist_ok=True)
     print(f"site: {out}/importer/index.html")
     if a.publish:
         remote = subprocess.run(["git", "-C", str(ROOT), "remote", "get-url", "origin"], check=True,

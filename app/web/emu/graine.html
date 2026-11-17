@@ -144,6 +144,8 @@ kbd { font-family: var(--ui); font-weight: 700; font-size: 13px; padding: 1px 6p
 .act:hover { border-color: var(--aqua); }
 .act:disabled { opacity: 0.45; cursor: default; }
 select { background: #221e2c; color: var(--text); border: 1px solid #3c3650; border-radius: 8px; padding: 5px 8px; font-size: 15px; }
+.pack { display: grid; gap: 8px; justify-items: center; border-top: 1px solid #2d2939; padding-top: 10px; width: 100%; }
+.pack .act { font-size: 14px; padding: 5px 10px; }
 .msg { min-height: 20px; color: var(--aqua); font-size: 14px; }
 .msg.err { color: var(--rec); }
 .shortcuts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 15px; color: #d6cfe2; }
@@ -255,6 +257,10 @@ footer { max-width: 1120px; margin: 0 auto; padding: 0 16px 30px; color: var(--m
             <button class="act" id="pick" type="button" disabled>Choisir un fichier</button>
           </div>
           <div class="msg" id="impmsg" aria-live="polite">Allume d'abord le FM-1.</div>
+          <div class="pack" id="pack" hidden>
+            <span class="small">Ou le pack voix, synthétisé pour GRAINE :</span>
+            <div class="row" id="packrow"></div>
+          </div>
         </div>
       </article>
       <article class="card">
@@ -582,12 +588,12 @@ $("reset").addEventListener("click", async () => {
 });
 
 /* ------------------------------------------------------------ a sound of your own, into U1..U4 */
-const CAP = 65472, RATE = 22050;
+const CAP = 65472, RATES = [22050, 16000, 11025, 8000];
 function ulaw(x) {
   const y = Math.sign(x) * Math.log1p(255 * Math.min(1, Math.abs(x))) / Math.log(256);
   return Math.max(0, Math.min(255, Math.round((y + 1) * 127.5)));
 }
-async function importFile(f) {
+async function importFile(f, given) {
   const msg = $("impmsg");
   if (!node) { msg.textContent = "Allume d'abord le FM-1."; return; }
   msg.className = "msg";
@@ -595,6 +601,11 @@ async function importFile(f) {
   try {
     const buf = await f.arrayBuffer();
     const dec = await ac.decodeAudioData(buf);
+    const c0 = dec.getChannelData(0);
+    let lead = 0;
+    while (lead < c0.length && Math.abs(c0[lead]) < 0.003) lead++;
+    const sec = (dec.length - lead) / dec.sampleRate;               // as the FM-1's importer: the best rate that holds it
+    const RATE = RATES.find((r) => sec * r <= CAP) || RATES[RATES.length - 1];
     const frames = Math.ceil(dec.duration * RATE);
     const oc = new OfflineAudioContext(1, Math.max(1, frames), RATE);
     const src = oc.createBufferSource();
@@ -616,13 +627,13 @@ async function importFile(f) {
     dv.setUint32(0, 0x31535247, true);
     dv.setUint32(4, len, true);
     dv.setUint32(8, RATE, true);
-    const name = f.name.replace(/\.[^.]*$/, "").normalize("NFD").replace(/[^A-Za-z0-9 _-]/g, "").toUpperCase().slice(0, 9) || "SON";
+    const name = (given || f.name.replace(/\.[^.]*$/, "")).normalize("NFD").replace(/[^A-Za-z0-9 _-]/g, "").toUpperCase().slice(0, 9) || "SON";
     for (let i = 0; i < name.length; i++) head[12 + i] = name.charCodeAt(i);
     dv.setUint32(24, 0xffffffff, true);
     dv.setUint32(28, 0xffffffff, true);
     const slot = +$("slot").value;
     send({ type: "app", part: "graine", slot, head: head.buffer, body: body.buffer }, [head.buffer, body.buffer]);
-    msg.textContent = `${name} → U${slot + 1} (${(len / RATE).toFixed(2).replace(".", ",")} s)…`;
+    msg.textContent = `${name} → U${slot + 1} (${(len / RATE).toFixed(2).replace(".", ",")} s à ${(RATE / 1000).toLocaleString("fr")} kHz)…`;
   } catch (e) {
     msg.className = "msg err";
     msg.textContent = "Impossible de lire ce fichier : " + (e && e.message || e);
@@ -632,6 +643,30 @@ function importDone(slot) {
   $("impmsg").textContent = `Prêt : U${slot + 1} est la source jouée. Il reste dans ce navigateur.`;
 }
 $("pick").addEventListener("click", () => $("file").click());
+/* the voice pack: inlined (the one-file page) or beside the page in voix/ */
+(async function voicePack() {
+  let list = window.GRAINE_PACK_INDEX;
+  if (!list) { try { const r = await fetch("voix/index.json"); if (r.ok) list = await r.json(); } catch (_) {} }
+  if (!list || !list.length) return;
+  const row = $("packrow");
+  for (const v of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "act";
+    b.textContent = v.name;
+    b.title = `${v.what} (${String(v.seconds).replace(".", ",")} s)`;
+    b.addEventListener("click", async () => {
+      try {
+        let blob;
+        if (window.GRAINE_PACK && window.GRAINE_PACK[v.file]) blob = new Blob([b64buf(window.GRAINE_PACK[v.file])], { type: "audio/wav" });
+        else { const w = await fetch("voix/" + v.file); if (!w.ok) throw new Error(w.status); blob = await w.blob(); }
+        await importFile(new File([blob], v.file, { type: "audio/wav" }), v.name);
+      } catch (e) { $("impmsg").className = "msg err"; $("impmsg").textContent = "Pack voix : " + (e && e.message || e); }
+    });
+    row.appendChild(b);
+  }
+  $("pack").hidden = false;
+})();
 $("file").addEventListener("change", () => { const f = $("file").files[0]; if (f) importFile(f); $("file").value = ""; });
 const drop = $("drop");
 drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });

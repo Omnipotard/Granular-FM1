@@ -172,6 +172,24 @@ remplir :
    python3 tools/graine_import.py --clear --slot 2
    ```
 
+### Le pack voix
+
+Cinq voix, **synthétisées** pour GRAINE par `tools/gen_voices.py` (aucune voix enregistrée), prêtes à charger
+dans U1–U4 : sur la page Importer et dans l'émulateur, un bouton chacune ; sans navigateur,
+`python3 tools/graine_import.py app/sounds/voix/raga.wav --slot 1`.
+
+| | | |
+|---|---|---|
+| **CHUCHOTE** | 2,8 s, 22 kHz | chuchotements à trois voix : consonnes, voyelles soufflées, une inspiration |
+| **RAGA** | 4 s, 16 kHz | raga Bhairav chanté sur « aa » (meends, andolan sur les notes komal, vibrato) sur un tanpura |
+| **TANPURA** | 5,8 s, 11 kHz | le tanpura seul : Pa, Sa, Sa, Sa grave, et le bourdonnement de sa jawari |
+| **MANTRA OM** | 5,7 s, 11 kHz | deux OM à cinq voix graves, du « O » au « M », avec un grondement tibétain |
+| **DIPHONIE** | 4 s, 16 kHz | chant diphonique : un bourdon de La et une mélodie sifflée de ses harmoniques |
+
+Pour les granuler : RAGA ou DIPHONIE avec `ALGORITHM` à ×0,2 et un grain long (le chant s'étire sans changer
+de hauteur) ; CHUCHOTE avec beaucoup de FLOU et l'ESSAIM en quintes ; TANPURA et MANTRA OM au GEL, sous un
+drone de HALO.
+
 Un emplacement garde 65 504 octets : 2,9 s en qualité 22 kHz, 4 s à 16 kHz, 5,9 s à 11 kHz, 8,1 s à 8 kHz.
 En mode auto, la meilleure qualité qui tient est choisie. Le silence du début est coupé, le son normalisé.
 Le son du FM-1 s'arrête quelques secondes pendant l'écriture. Un envoi interrompu laisse l'emplacement vide,

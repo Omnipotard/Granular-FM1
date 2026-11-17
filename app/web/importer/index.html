@@ -79,6 +79,10 @@ marche dans Chrome ou Edge.</p>
     <p>Dépose un fichier audio ici (WAV, MP3, OGG, FLAC, M4A…)</p>
     <label class="pick">Choisir un fichier&hellip;<input type="file" id="file" accept="audio/*,.wav,.aif,.aiff,.mp3,.ogg,.flac,.m4a"></label>
   </div>
+  <div id="pack" hidden>
+    <p>Ou un son du <b>pack voix</b>, synthétisé pour GRAINE (aucune voix enregistrée) :</p>
+    <div class="row" id="packrow"></div>
+  </div>
   <div id="prep" hidden>
     <canvas id="wave" width="1200" height="180" aria-label="La forme d'onde du son tel qu'il sera envoyé"></canvas>
     <p class="facts" id="facts"></p>
@@ -391,6 +395,32 @@ async function pick(file) {
   }
 }
 $("file").addEventListener("change", (e) => { pick(e.target.files[0]); e.target.value = ""; });
+// the voice pack (tools/gen_voices.py), beside this page in voix/: a button each
+(async function voicePack() {
+  try {
+    const r = await fetch("voix/index.json");
+    if (!r.ok) return;
+    const list = await r.json(), row = $("packrow");
+    for (const v of list) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "quiet";
+      b.textContent = v.name;
+      b.title = `${v.what} (${String(v.seconds).replace(".", ",")} s)`;
+      b.addEventListener("click", async () => {
+        if (busy) return;
+        try {
+          const w = await fetch("voix/" + v.file);
+          if (!w.ok) throw new Error(w.status);
+          $("name").value = v.name.slice(0, 9);
+          await pick(new File([await w.blob()], v.file, { type: "audio/wav" }));
+        } catch (e) { say(`Le son ${esc(v.name)} n'a pas pu être chargé : ${esc(e.message || e)}`, true); }
+      });
+      row.appendChild(b);
+    }
+    $("pack").hidden = !list.length;
+  } catch (_) { /* opened from disk: no pack */ }
+})();
 const drop = $("drop");
 drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
 drop.addEventListener("dragleave", () => drop.classList.remove("over"));

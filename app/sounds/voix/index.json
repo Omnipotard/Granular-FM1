@@ -1,0 +1,37 @@
+[
+ {
+  "file": "chuchote.wav",
+  "name": "CHUCHOTE",
+  "what": "chuchotements à trois voix, consonnes et souffles",
+  "seconds": 2.84,
+  "rate": 22050
+ },
+ {
+  "file": "raga.wav",
+  "name": "RAGA",
+  "what": "raga Bhairav chanté sur un tanpura (gamakas, meends)",
+  "seconds": 4.0,
+  "rate": 16000
+ },
+ {
+  "file": "tanpura.wav",
+  "name": "TANPURA",
+  "what": "le tanpura seul : Pa, Sa, Sa, Sa grave, et sa jawari",
+  "seconds": 5.8,
+  "rate": 11025
+ },
+ {
+  "file": "mantra.wav",
+  "name": "MANTRA OM",
+  "what": "OM à cinq voix graves, avec le grondement tibétain",
+  "seconds": 5.74,
+  "rate": 11025
+ },
+ {
+  "file": "gorge.wav",
+  "name": "DIPHONIE",
+  "what": "chant diphonique : un bourdon et une mélodie d'harmoniques",
+  "seconds": 3.99,
+  "rate": 16000
+ }
+]

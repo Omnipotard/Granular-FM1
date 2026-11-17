@@ -78,11 +78,14 @@ gel · envers · −1 octave · +1 octave · quinte · nuée (densité ×4) · p
 
 ## Les sons
 
-Huit sources, toutes **synthétisées** par `tools/gen_sounds.py` (aucun échantillon enregistré, aucun droit tiers) :
-VOIX (chœur qui glisse de voyelle en voyelle), VERRE, CORDE, SOUFFLE, TAMBOUR, ORGUE, PLUIE, SPECTRE.
-Plus CAPTURE (en RAM, 2,97 s) et U1–U4 (en flash, ce que tu gardes). Seize sons d'usine : BRUME, CHORALE,
-VERRIÈRE, GIVRE, HARPE, ÉTIREMENT, SOUFFLE, MACHINE, GLITCH, ORGANUM, AVERSE, SPECTRE, TROU NOIR, POUSSIÈRE,
-ARPEGIO, RÉCOLTE.
+Treize sources, toutes **synthétisées** par `tools/gen_sounds.py` (aucun échantillon enregistré, aucun droit
+tiers), plus CAPTURE (en RAM, 2,97 s) et U1–U4 (en flash, ce que tu gardes), et 24 sons d'usine : la liste
+est dans le [manuel](app/docs/MANUAL.md).
+
+**Pack voix** : CHUCHOTE (chuchotements), RAGA (raga Bhairav chanté sur un tanpura), TANPURA, MANTRA OM (OM à cinq
+voix graves) et DIPHONIE (chant diphonique), synthétisés eux aussi (`tools/gen_voices.py`, dans
+`app/sounds/voix/`). La flash du firmware étant pleine, ils se chargent dans U1–U4 : un bouton chacun sur la
+page Importer et dans l'émulateur, ou `tools/graine_import.py`.
 
 ![Les seize sons d'usine](docs/img/presets.png)
 
@@ -95,7 +98,7 @@ Notes (vélocité), pitch bend ±2, molette (CC1, source de modulation), pressio
 
 Le même code, compilé en WebAssembly, dans le navigateur : `./build.sh --web` produit `app/build/emu/site/`
 (à héberger) et `app/build/emu/graine-emulateur.html` (un seul fichier à ouvrir). On peut y déposer un fichier
-audio dans U1–U4 et brancher un clavier MIDI.
+audio ou un son du pack voix dans U1–U4, et brancher un clavier MIDI.
 
 ![L'émulateur](docs/img/emulateur.png)
 
@@ -120,6 +123,7 @@ communauté FM-1 compile, teste et signe le paquet, et publie la release.
 ```sh
 pip install mido python-rtmidi
 python3 tools/graine_import.py mon-son.wav --slot 1
+python3 tools/graine_import.py app/sounds/voix/raga.wav --slot 2   # un son du pack voix
 ```
 
 ## Licence

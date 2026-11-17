@@ -11,7 +11,7 @@ Le code de GRAINE est sous MIT. Le README décrit l'instrument côté musicien ;
   **Pas encore essayée sur une vraie machine** : CPU réel, second cœur, lisibilité, import USB.
 - Tourne dans le **simulateur** et l'**émulateur web** (essayé dans Chromium : import d'un WAV, jeu).
   `sh tests/run_tests.sh` : 73 vérifications du simulateur (`features`, `drone_glitch`, `import`), 12 de l'outil
-  d'import contre un FM-1 simulé, 10 de la page d'import (Node). Fuzz : 6 sessions aléatoires (17 min simulées)
+  d'import contre un FM-1 simulé, 16 du pack voix, 10 de la page d'import (Node). Fuzz : 6 sessions aléatoires (17 min simulées)
   sous ASan + UBSan, propres (sauf `fastmath.h` : décalage d'un négatif voulu, `-fno-sanitize=shift`).
 - Site : `tools/site.py VERSION [--publish]` (branche `gh-pages`, à activer dans Settings > Pages).
 
@@ -31,11 +31,12 @@ Le code de GRAINE est sous MIT. Le README décrit l'instrument côté musicien ;
 | `app/host.c` | les `expect` du simulateur |
 | `app/tests/features.txt` | test scripté de toutes les fonctions |
 | `app/sounds/bank.h` | généré par `tools/gen_sounds.py` (13 sources µ-law, chacune à son taux : 16 kHz, 11 025 Hz pour BASSE et NAPPE ; 385 Ko) |
+| `tools/gen_voices.py` → `app/sounds/voix/` | le pack voix (CHUCHOTE, RAGA, TANPURA, MANTRA OM, DIPHONIE) : synthèse vocale (source glottique, formants, consonnes chuchotées, gamakas, jawari), un WAV chacun au taux que l'import choisira + `index.json`. **Pas dans la flash** (pleine) : chargé dans U1–U4 par les boutons de la page d'import et de l'émulateur (`emu_page.py`, `site.py` copient `voix/`, la page à un fichier l'inline), ou `graine_import.py`. `tests/voice_pack_test.py` |
 | `app/web/importer/index.html` | la page d'import du site (Web MIDI, même protocole que `tools/graine_import.py`) |
 | `app/docs/MANUAL.md`, `app/site/landing.md` | le manuel et la page d'accueil du site |
 | `tools/graine_import.py` | un WAV vers U1–U4 par USB, sans navigateur (et `tests/import_tool_test.py`) |
 | `tools/site.py` | la release, l'émulateur, le site de fm1-base + la page d'import ; `--publish` vers gh-pages |
-| `app/web/emu/graine.html` + `tools/emu_page.py` | la page de l'émulateur (le worklet de fm1-base + ses parts + la part `graine`) |
+| `app/web/emu/graine.html` + `tools/emu_page.py` | la page de l'émulateur (le worklet de fm1-base + ses parts + la part `graine`) ; son import choisit le taux comme la machine (22/16/11/8 kHz selon la durée) |
 | `tools/emcc-wasi/` | un `emcc` de remplacement : clang + sysroot WASI (sans Emscripten) |
 
 ## Règles du FM-1 (à respecter, le build device les vérifie)

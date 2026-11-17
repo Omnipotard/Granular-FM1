@@ -51,12 +51,22 @@ def main():
     page = PAGE.read_text()
     site = EMU / "site"
     site.mkdir(parents=True, exist_ok=True)
+    voix = ROOT / "app" / "sounds" / "voix"
+    index = json.loads((voix / "index.json").read_text()) if (voix / "index.json").exists() else []
+    if index:                                     # the voice pack beside the page, and inlined in the one-file page
+        (site / "voix").mkdir(exist_ok=True)
+        for v in index:
+            shutil.copy(voix / v["file"], site / "voix" / v["file"])
+        shutil.copy(voix / "index.json", site / "voix" / "index.json")
     (site / "index.html").write_text(page.replace("<!--@@INLINE@@-->", ""))
     (site / "worklet.js").write_text(worklet)
     shutil.copy(EMU / "app.wasm", site / "app.wasm")
     wasm = base64.b64encode((EMU / "app.wasm").read_bytes()).decode()
     inline = ("<script>window.GRAINE_WORKLET = " + json.dumps(worklet).replace("</", "<\\/") + ";\n"
-              "window.GRAINE_WASM = \"" + wasm + "\";</script>")
+              "window.GRAINE_WASM = \"" + wasm + "\";\n"
+              "window.GRAINE_PACK_INDEX = " + json.dumps(index, ensure_ascii=False) + ";\n"
+              "window.GRAINE_PACK = " + json.dumps({v["file"]: base64.b64encode((voix / v["file"]).read_bytes()).decode()
+                                                    for v in index}) + ";</script>")
     one = EMU / "graine-emulateur.html"
     one.write_text(page.replace("<!--@@INLINE@@-->", inline))
     print(f"emu page {site}/ (index.html, worklet.js, app.wasm) and {one} ({one.stat().st_size // 1024} KB)")
